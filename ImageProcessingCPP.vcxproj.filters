@@ -19,6 +19,12 @@
     <Filter Include="Header Files\imgui">
       <UniqueIdentifier>{243e3ec3-13c4-4849-9209-da2246c63d40}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Resource Files\Input">
+      <UniqueIdentifier>{189ffc15-a9a8-4a90-897e-2aa0cd2297b3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resource Files\Output">
+      <UniqueIdentifier>{160e8891-2448-4f8a-b6c9-0875be89bc2e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ImageProcessingCPP.cpp">
@@ -74,5 +80,19 @@
     <ClInclude Include="imstb_textedit.h">
       <Filter>Header Files\imgui</Filter>
     </ClInclude>
+    <ClInclude Include="Calculator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="stb_image.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="input\Zoro.png">
+      <Filter>Resource Files\Input</Filter>
+    </Image>
+    <Image Include="input\Zoro.jpg">
+      <Filter>Resource Files\Input</Filter>
+    </Image>
   </ItemGroup>
 </Project>
