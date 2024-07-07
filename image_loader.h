@@ -30,7 +30,7 @@ bool LoadTextureFromFile(const char* filename, GLuint* out_texture, int* out_wid
     int image_height = 0;
     int image_channels = 4;
     unsigned char* image_data = stbi_load(filename, &image_width, &image_height, NULL, image_channels);
-    printImgData(image_data, image_height, image_width, image_channels);
+    //printImgData(image_data, image_height, image_width, image_channels);
     if (image_data == NULL)
         return false;
 
