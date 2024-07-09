@@ -3,27 +3,28 @@
 #include "ImGuiFileDialog.h"
 
 
-const char* drawGui(bool* keep_open) {
+void drawGui(char** path, bool* keep_open) {
     // open Dialog Simple
     IGFD::FileDialogConfig config;
     config.path = ".";
-    ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".jpg,.png", config);
-    const char* path_string = nullptr;
+    ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".jpg,.png,", config);
+    char* path_string = nullptr;
     // display
     if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) {
         if (ImGuiFileDialog::Instance()->IsOk()) { // action if OK
             std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
             std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
             // action
-            const char* path_string = filePathName.c_str();
-            // *keep_open = false;
+            path_string = new char[filePathName.length() + 1];
+            strcpy_s(path_string, filePathName.length() + 1, filePathName.c_str());
+            *path = path_string;
+            *keep_open = false;
             ImGuiFileDialog::Instance()->Close();
         }
 
         // close
         *keep_open = false;
         ImGuiFileDialog::Instance()->Close();
-        return path_string;
     }
 }
 
@@ -56,8 +57,7 @@ int main(int, char**)
     bool show_demo_window = true;
 
 
-    const char* input_path = NULL;
-    bool show_path_chooser = false;
+    
 
     bool input_image_exists = false;
     bool output_image_exists = false;
@@ -66,11 +66,18 @@ int main(int, char**)
 
     bool show_imgproc_operations = false;
 
-    int my_image_width = 0;
-    int my_image_height = 0;
-    GLuint my_image_texture = 0;
-    bool ret = LoadTextureFromFile("input/Zoro.jpg", &my_image_texture, &my_image_width, &my_image_height);
-    IM_ASSERT(ret);
+    bool show_path_chooser = false;
+
+    char* input_path = NULL;
+
+    int input_image_width = 0;
+    int input_image_height = 0;
+    GLuint input_image_texture = 0;
+    bool input_ret = false; 
+
+    int output_image_width = 0;
+    int output_image_height = 0;
+    GLuint output_image_texture = 0;
 
     while (!glfwWindowShouldClose(window))
     {
@@ -118,31 +125,37 @@ int main(int, char**)
 
         if (show_path_chooser)
         {
-            input_path = drawGui(&show_path_chooser);
-            printf("%s\n", input_path);
+            drawGui(&input_path, &show_path_chooser);
         }
 
         {
             ImGui::Begin("Input Image");
-            ImGui::Text("pointer = %x", my_image_texture);
-            ImGui::Text("size = %d x %d", my_image_width, my_image_height);
+            ImGui::Text("pointer = %x", input_image_texture);
+            ImGui::Text("size = %d x %d", input_image_width, input_image_height);
             if (input_path != nullptr)
             {
-                ImGui::Text("file path: %s", *input_path);
+                ImGui::Text("file path: %s", input_path);
+                if (ImGui::Button("Load image"))
+                {
+                    input_ret = LoadTextureFromFile("input/Zoro.jpg", &input_image_texture, &input_image_width, &input_image_height);
+                    IM_ASSERT(input_ret);
+                    show_input_image = true;
+                }
             }
             if (show_input_image)
             {
-                ImGui::Image((void*)(intptr_t)my_image_texture, ImVec2(my_image_width, my_image_height));
+                ImGui::Image((void*)(intptr_t)input_image_texture, ImVec2(input_image_width, input_image_height));
+                
             }
             ImGui::End();
         }
         {
             ImGui::Begin("Output Image");
-            ImGui::Text("pointer = %x", my_image_texture);
-            ImGui::Text("size = %d x %d", my_image_width, my_image_height);
+            ImGui::Text("pointer = %x", output_image_texture);
+            ImGui::Text("size = %d x %d", output_image_width, output_image_height);
             if (show_output_image)
             {
-                ImGui::Image((void*)(intptr_t)my_image_texture, ImVec2(my_image_width, my_image_height));
+                ImGui::Image((void*)(intptr_t)output_image_texture, ImVec2(output_image_width, output_image_height));
             }
             ImGui::End();
         }
