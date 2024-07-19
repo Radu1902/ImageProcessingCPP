@@ -1,7 +1,7 @@
 #include "image_loader.h"
 #include "gui.h"
 #include "ImGuiFileDialog.h"
-
+#include "Image.h"
 
 void drawGui(char** path, bool* keep_open) {
     // open Dialog Simple
@@ -78,6 +78,9 @@ int main(int, char**)
     int output_image_width = 0;
     int output_image_height = 0;
     GLuint output_image_texture = 0;
+    bool output_ret = false;
+
+    Image img;
 
     while (!glfwWindowShouldClose(window))
     {
@@ -92,7 +95,6 @@ int main(int, char**)
             ImGui::ShowDemoWindow(&show_demo_window);
 
         
-
 
         
 
@@ -137,9 +139,12 @@ int main(int, char**)
                 ImGui::Text("file path: %s", input_path);
                 if (ImGui::Button("Load image"))
                 {
-                    input_ret = LoadTextureFromFile("input/Zoro.jpg", &input_image_texture, &input_image_width, &input_image_height);
+                    input_ret = LoadTextureFromFile(input_path, &input_image_texture, &input_image_width, &input_image_height);
+                    img.loadImage(input_path, 3);
+
                     IM_ASSERT(input_ret);
                     show_input_image = true;
+                    show_imgproc_operations = true;
                 }
             }
             if (show_input_image)
