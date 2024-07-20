@@ -58,6 +58,35 @@ public:
 			data[i] = 0;
 		}
 	}
+	Pixel(unsigned char* data_, int channels_)
+	{
+
+		if (channels_ == 1)
+			this->type = PixelType::GRAY;
+		else if (channels_ == 3)
+			this->type = PixelType::RGB;
+		else if (channels_ == 4)
+			this->type = PixelType::RGBA;
+		else
+		{
+			this->channels = 3;
+			this->data = this->data = new unsigned char[channels];
+			this->type = PixelType::RGB;
+			for (size_t i = 0; i < channels; i++)
+			{
+				data[i] = 0;
+			}
+			return;
+		}
+
+		this->data = new unsigned char[channels_];
+		this->channels = channels_;
+		for (size_t i = 0; i < channels; i++)
+		{
+			data[i] = data_[i];
+		}
+	}
+
 	Pixel(PixelType type_)
 	{
 		switch (type)
@@ -129,6 +158,21 @@ public:
 		
 		this->data[channel] = value;
 	}
+	unsigned char getValue(int channel)
+	{
+		try
+		{
+			if (channel < 0 || channel >= this->channels)
+				throw (channel);
+			return data[channel];
+		}
+		catch (int channel) 
+		{
+			printf("invalid channel, %d", channel);
+		}
+
+
+	}
 
 	void cvtGrayscale()
 	{
@@ -148,7 +192,35 @@ public:
 		this->type = PixelType::GRAY;
 		this->data = new unsigned char[channels];
 		this->data[0] = (r + b + g) / 3;
+	}
+	void cvtColor()
+	{
+		if (channels == 1)
+			return;
 
+		if (data == nullptr)
+			return;
+
+		char value = data[0];
+
+		delete[] this->data;
+
+		this->channels = 3;
+		this->type = PixelType::RGB;
+		this->data = new unsigned char[channels];
+		this->data[0] = value;
+		this->data[1] = value;
+		this->data[2] = value;
+
+	}
+	void print()
+	{
+		printf("[");
+		for (size_t i = 0; i < channels; i++)
+		{
+			printf("%d ", data[i]);
+		}
+		printf("]");
 	}
 	
 };

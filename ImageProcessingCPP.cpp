@@ -145,6 +145,7 @@ int main(int, char**)
                     IM_ASSERT(input_ret);
                     show_input_image = true;
                     show_imgproc_operations = true;
+                    img.print();
                 }
             }
             if (show_input_image)
