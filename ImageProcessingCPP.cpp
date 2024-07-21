@@ -82,6 +82,8 @@ int main(int, char**)
 
     Image img;
 
+    static float size_coefficient = 1.0f;
+
     while (!glfwWindowShouldClose(window))
     {
         glfwPollEvents();
@@ -134,6 +136,7 @@ int main(int, char**)
             ImGui::Begin("Input Image");
             ImGui::Text("pointer = %x", input_image_texture);
             ImGui::Text("size = %d x %d", input_image_width, input_image_height);
+            ImGui::SliderFloat("resize  (VISUAL ONLY)", &size_coefficient, 0.1f, 10.0f);
             if (input_path != nullptr)
             {
                 ImGui::Text("file path: %s", input_path);
@@ -145,13 +148,12 @@ int main(int, char**)
                     IM_ASSERT(input_ret);
                     show_input_image = true;
                     show_imgproc_operations = true;
-                    img.print();
+                    //img.print();
                 }
             }
             if (show_input_image)
             {
-                ImGui::Image((void*)(intptr_t)input_image_texture, ImVec2(input_image_width, input_image_height));
-                
+                ImGui::Image((void*)(intptr_t)input_image_texture, ImVec2(input_image_width * size_coefficient, input_image_height * size_coefficient));
             }
             ImGui::End();
         }

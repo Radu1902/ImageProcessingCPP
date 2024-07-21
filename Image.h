@@ -23,19 +23,19 @@ public:
 
 	Image(int height_, int width_, int channels_, Pixel** data_)
 	{
+		deallocateImage();
 		this->height = height_;
 		this->width = width_;
 		this->channels = channels_;
-		deallocateImage();
 		this->data = data_;
 	}
 
 	Image(Image& img)
 	{
+		deallocateImage();
 		this->height = img.height;
 		this->width = img.width;
 		this->channels = img.channels;
-		deallocateImage();
 		this->data = img.data;
 	}
 
@@ -49,9 +49,7 @@ public:
 			return false;
 
 
-		this->width = image_width;
-		this->height = image_height;
-		this->channels = image_channels;
+		
 		setImageMatrix(image_data, image_width, image_height, image_channels);
 
 		stbi_image_free(image_data);
@@ -61,7 +59,9 @@ public:
 	void setImageMatrix(unsigned char* raw_data, int image_width, int image_height, int image_channels)
 	{
 		deallocateImage();
-
+		this->width = image_width;
+		this->height = image_height;
+		this->channels = image_channels;
 
 		this->data = new Pixel*[image_height];
 		for (size_t y = 0; y < image_height; y++)
