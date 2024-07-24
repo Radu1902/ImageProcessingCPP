@@ -1,7 +1,9 @@
 #pragma once
 
 #define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image.h"
+#include "stb_image_write.h"
 
 #include <GLFW/glfw3.h> // Will drag system OpenGL headers
 
@@ -23,12 +25,12 @@ void printImgData(unsigned char* img, int height, int width, int channels)
     }
 }
 // Simple helper function to load an image into a OpenGL texture with common settings
-bool LoadTextureFromFile(const char* filename, GLuint* out_texture, int* out_width, int* out_height)
+bool loadTextureFromFile(const char* filename, GLuint* out_texture, int* out_width, int* out_height)
 {
     // Load from file
     int image_width = 0;
     int image_height = 0;
-    int image_channels = 4;
+    int image_channels = 3;
     unsigned char* image_data = stbi_load(filename, &image_width, &image_height, NULL, image_channels);
     if (image_data == NULL)
         return false;
@@ -42,7 +44,7 @@ bool LoadTextureFromFile(const char* filename, GLuint* out_texture, int* out_wid
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image_width, image_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image_data);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image_width, image_height, 0, GL_RGB, GL_UNSIGNED_BYTE, image_data);
 
     stbi_image_free(image_data);
 
@@ -51,4 +53,9 @@ bool LoadTextureFromFile(const char* filename, GLuint* out_texture, int* out_wid
     *out_height = image_height;
 
     return true;
+}
+
+bool writeTextureToFile(const char* filename, int width, int height, int channels, unsigned char* texture)
+{
+    return stbi_write_bmp(filename, width, height, channels, texture);
 }

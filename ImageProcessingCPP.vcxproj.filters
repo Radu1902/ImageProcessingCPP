@@ -22,9 +22,6 @@
     <Filter Include="Resource Files\Input">
       <UniqueIdentifier>{189ffc15-a9a8-4a90-897e-2aa0cd2297b3}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Resource Files\Output">
-      <UniqueIdentifier>{160e8891-2448-4f8a-b6c9-0875be89bc2e}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ImageProcessingCPP.cpp">

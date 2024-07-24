@@ -7,7 +7,7 @@ void drawGui(char** path, bool* keep_open) {
     // open Dialog Simple
     IGFD::FileDialogConfig config;
     config.path = ".";
-    ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".jpg,.png,", config);
+    ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".jpg,.png,.bmp,.jpeg", config);
     char* path_string = nullptr;
     // display
     if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) {
@@ -26,6 +26,19 @@ void drawGui(char** path, bool* keep_open) {
         *keep_open = false;
         ImGuiFileDialog::Instance()->Close();
     }
+}
+
+void writeAndDisplayOutput(GLuint* output_image_texture, int* output_image_width, int* output_image_height, int *output_image_channels, Image out_img)
+{
+    unsigned char* out_texture;
+    out_img.getTexture(&out_texture);
+    *output_image_width = out_img.getWidth();
+    *output_image_height = out_img.getHeight();
+    *output_image_channels = out_img.getChannels();
+
+    writeTextureToFile("output/outputty.bmp", *output_image_width, *output_image_height, *output_image_channels, out_texture);
+    bool output_ret = loadTextureFromFile("output/outputty.bmp", output_image_texture, output_image_width, output_image_height);
+    IM_ASSERT(output_ret);
 }
 
 int main(int, char**)
@@ -53,11 +66,8 @@ int main(int, char**)
 
 
 
-
     bool show_demo_window = true;
 
-
-    
 
     bool input_image_exists = false;
     bool output_image_exists = false;
@@ -79,10 +89,15 @@ int main(int, char**)
     int output_image_height = 0;
     GLuint output_image_texture = 0;
     bool output_ret = false;
+    int output_image_channels = 0;
 
-    Image img;
+    Image in_img;
+    Image out_img;
 
     static float size_coefficient = 1.0f;
+
+    int thresh = 255;
+    bool show_thresh_dialog = false;
 
     while (!glfwWindowShouldClose(window))
     {
@@ -110,12 +125,28 @@ int main(int, char**)
                 }
                 if (show_imgproc_operations)
                 {
+                    if (ImGui::BeginMenu("Basic operations"))
+                    {
+                        if (ImGui::MenuItem("Convert to grayscale"))
+                        {
+                            out_img = in_img.convert2Gray();
+
+                            writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                            show_output_image = true;
+                        }
+                        ImGui::EndMenu();
+                    }
                     if (ImGui::BeginMenu("Pointwise operations"))
                     {
                         ImGui::EndMenu();
                     }
                     if (ImGui::BeginMenu("Thresholdings"))
                     {
+
+                        if (ImGui::MenuItem("Manual"))
+                        {
+                            show_thresh_dialog = true;
+                        }
                         ImGui::EndMenu();
                     }
                     if (ImGui::BeginMenu("Filters"))
@@ -127,9 +158,25 @@ int main(int, char**)
             }
         }
 
+
+
         if (show_path_chooser)
         {
             drawGui(&input_path, &show_path_chooser);
+        }
+
+        if (show_thresh_dialog)
+        {
+            ImGui::Begin("Manual thresholding");
+            ImGui::SliderInt("Choose Threshold", &thresh, 0, 255);
+            if (ImGui::Button("Choose"))
+            {
+                out_img = in_img.threshold(thresh);
+                writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                show_output_image = true;
+                show_thresh_dialog = false;
+            }
+            ImGui::End();
         }
 
         {
@@ -142,13 +189,12 @@ int main(int, char**)
                 ImGui::Text("file path: %s", input_path);
                 if (ImGui::Button("Load image"))
                 {
-                    input_ret = LoadTextureFromFile(input_path, &input_image_texture, &input_image_width, &input_image_height);
-                    img.loadImage(input_path, 3);
+                    input_ret = loadTextureFromFile(input_path, &input_image_texture, &input_image_width, &input_image_height);
+                    in_img.loadImage(input_path, 3);
 
                     IM_ASSERT(input_ret);
                     show_input_image = true;
                     show_imgproc_operations = true;
-                    //img.print();
                 }
             }
             if (show_input_image)
@@ -163,7 +209,7 @@ int main(int, char**)
             ImGui::Text("size = %d x %d", output_image_width, output_image_height);
             if (show_output_image)
             {
-                ImGui::Image((void*)(intptr_t)output_image_texture, ImVec2(output_image_width, output_image_height));
+                ImGui::Image((void*)(intptr_t)output_image_texture, ImVec2(output_image_width * size_coefficient, output_image_height * size_coefficient));
             }
             ImGui::End();
         }
@@ -184,6 +230,7 @@ int main(int, char**)
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
 
+    
     glfwDestroyWindow(window);
     glfwTerminate();
 

@@ -18,21 +18,19 @@ public:
 		height = 0;
 		width = 0;
 		channels = 3;
-		data = new Pixel*[0];
+		data = nullptr;
 	}
 
 	Image(int height_, int width_, int channels_, Pixel** data_)
 	{
-		deallocateImage();
 		this->height = height_;
 		this->width = width_;
 		this->channels = channels_;
 		this->data = data_;
 	}
 
-	Image(Image& img)
+	Image(const Image& img)
 	{
-		deallocateImage();
 		this->height = img.height;
 		this->width = img.width;
 		this->channels = img.channels;
@@ -58,7 +56,7 @@ public:
 
 	void setImageMatrix(unsigned char* raw_data, int image_width, int image_height, int image_channels)
 	{
-		deallocateImage();
+		//deallocateImage();
 		this->width = image_width;
 		this->height = image_height;
 		this->channels = image_channels;
@@ -82,15 +80,25 @@ public:
 			}
 		}
 	}
-	void deallocateImage()
-	{
-		for (size_t y = 0; y < height; y++)
-		{
-			delete[] this->data[y];
-		}
-		delete[] this->data;
-	}
+	//void deallocateImage()
+	//{
+	//	for (size_t y = 0; y < height; y++)
+	//	{
+	//		Pixel* debuggy = this->data[y];
+	//		delete[] this->data[y];
+	//	}
+	//	delete[] this->data;
+	//}
 
+	void setDimensions(int width_, int height_)
+	{
+		this->width = width_;
+		this->height = height_;
+	}
+	void setChannels(int channels_)
+	{
+		this->channels = channels_;
+	}
 
 	Image convert2Gray()
 	{
@@ -108,8 +116,30 @@ public:
 				grayscale[y][x].cvtGrayscale();
 			}
 		}
+		grayscale.setChannels(1);
 
 		return grayscale;
+	}
+	Image threshold(int thresh)
+	{
+		if (data == nullptr)
+		{
+			Image img;
+			return img;
+		}
+		Image threshed = (*this).convert2Gray();
+
+		for (size_t y = 0; y < height; y++)
+		{
+			for (size_t x = 0; x < width; x++)
+			{
+				if (threshed[y][x].getValue(0) < thresh)
+					threshed[y][x].setValue(0, 0);
+				else
+					threshed[y][x].setValue(255, 0);
+			}
+		}
+		return threshed;
 	}
 
 	void print()
@@ -124,17 +154,52 @@ public:
 		}
 	}
 
+	void getTexture(unsigned char** textureData)
+	{
+		//delete[] textureData;
+
+		*textureData = new unsigned char[height * width * channels];
+
+		for (size_t y = 0; y < height; y++)
+		{
+			for (size_t x = 0; x < width; x++)
+			{
+				for (size_t channel = 0; channel < channels; channel++)
+				{
+					int idx = (((y * width) + x) * channels) + channel;
+
+					unsigned char value = this->data[y][x].getValue(channel);
+
+					(*textureData)[idx] = value;
+				}
+			}
+		}
+
+	}
+	int getWidth()
+	{
+		return width;
+	}
+	int getHeight()
+	{
+		return height;
+	}
+	int getChannels()
+	{
+		return channels;
+	}
+
 	Pixel*& operator[](std::size_t idx) 
 	{
 		return this->data[idx];
 	}
 
-	~Image()
-	{
-		for (size_t y = 0; y < height; y++)
-		{
-			delete[] this->data[y];
-		}
-		delete[] this->data;
-	}
+	//~Image()
+	//{
+	//	for (size_t y = 0; y < height; y++)
+	//	{
+	//		delete[] this->data[y];
+	//	}
+	//	delete[] this->data;
+	//}
 };
