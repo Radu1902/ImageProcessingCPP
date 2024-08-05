@@ -100,48 +100,6 @@ public:
 		this->channels = channels_;
 	}
 
-	Image convert2Gray()
-	{
-		if (data == nullptr)
-		{
-			Image img;
-			return img;
-		}
-		Image grayscale(*this);
-
-		for (size_t y = 0; y < this->height; y++)
-		{
-			for (size_t x = 0; x < this->width; x++)
-			{
-				grayscale[y][x].cvtGrayscale();
-			}
-		}
-		grayscale.setChannels(1);
-
-		return grayscale;
-	}
-	Image threshold(int thresh)
-	{
-		if (data == nullptr)
-		{
-			Image img;
-			return img;
-		}
-		Image threshed = (*this).convert2Gray();
-
-		for (size_t y = 0; y < height; y++)
-		{
-			for (size_t x = 0; x < width; x++)
-			{
-				if (threshed[y][x].getValue(0) < thresh)
-					threshed[y][x].setValue(0, 0);
-				else
-					threshed[y][x].setValue(255, 0);
-			}
-		}
-		return threshed;
-	}
-
 	void print()
 	{
 		for (size_t y = 0; y < height; y++)
@@ -187,6 +145,12 @@ public:
 	int getChannels()
 	{
 		return channels;
+	}
+	bool isNull()
+	{
+		if (this->data == nullptr)
+			return true;
+		return false;
 	}
 
 	Pixel*& operator[](std::size_t idx) 

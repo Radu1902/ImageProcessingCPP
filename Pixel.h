@@ -30,6 +30,15 @@ public:
 	//	this->channels = channels_;
 	//	this->type = type_;
 	//}
+	Pixel(Pixel& px)
+	{
+		this->channels = px.channels;
+
+		this->data = new unsigned char[channels];
+
+		this->data = px.data;
+		this->type = px.type;
+	}
 	Pixel(int channels_)
 	{
 
@@ -195,28 +204,7 @@ public:
 		//short result = (r + b + g) / 3;
 		result = normalize(result);
 
-		delete[] this->data;
-
-		this->channels = 1;
-		this->type = PixelType::GRAY;
-		this->data = new unsigned char[channels];
-		this->data[0] = (char)result;
-	}
-	void cvtGrayscaleAlt()
-	{
-		if (channels < 3)
-			return;
-
-		if (data == nullptr)
-			return;
-
-		short r = data[0];
-		short g = data[1];
-		short b = data[2];
-		short result = (r + b + g) / 3;
-		result = normalize(result);
-
-		delete[] this->data;
+		//delete[] data;
 
 		this->channels = 1;
 		this->type = PixelType::GRAY;

@@ -2,6 +2,7 @@
 #include "gui.h"
 #include "ImGuiFileDialog.h"
 #include "Image.h"
+#include "Operations.h"
 
 void drawGui(char** path, bool* keep_open) {
     // open Dialog Simple
@@ -129,7 +130,7 @@ int main(int, char**)
                     {
                         if (ImGui::MenuItem("Convert to grayscale"))
                         {
-                            out_img = in_img.convert2Gray();
+                            out_img = convert2Gray(in_img);
 
                             writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
                             show_output_image = true;
@@ -171,7 +172,7 @@ int main(int, char**)
             ImGui::SliderInt("Choose Threshold", &thresh, 0, 255);
             if (ImGui::Button("Choose"))
             {
-                out_img = in_img.threshold(thresh);
+                out_img = threshold(in_img, thresh);
                 writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
                 show_output_image = true;
                 show_thresh_dialog = false;
