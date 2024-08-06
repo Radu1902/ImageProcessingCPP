@@ -33,11 +33,14 @@ public:
 	Pixel(Pixel& px)
 	{
 		this->channels = px.channels;
-
-		this->data = new unsigned char[channels];
-
-		this->data = px.data;
 		this->type = px.type;
+
+		this->data = new unsigned char[channels]; // + 1 for the terminator character (null)
+		for (size_t i = 0; i < channels; i++)
+		{
+			data[i] = px.getValue(i);
+		}
+		//data[channels] = '\0';
 	}
 	Pixel(int channels_)
 	{

@@ -21,20 +21,28 @@ public:
 		data = nullptr;
 	}
 
-	Image(int height_, int width_, int channels_, Pixel** data_)
-	{
-		this->height = height_;
-		this->width = width_;
-		this->channels = channels_;
-		this->data = data_;
-	}
+	//Image(int height_, int width_, int channels_, Pixel** data_)
+	//{
+	//	this->height = height_;
+	//	this->width = width_;
+	//	this->channels = channels_;
+	//	this->data = data_;
+	//}
 
 	Image(const Image& img)
 	{
 		this->height = img.height;
 		this->width = img.width;
 		this->channels = img.channels;
-		this->data = img.data;
+		this->data = new Pixel * [img.height];
+		for (size_t y = 0; y < img.height; y++)
+		{
+			this->data[y] = new Pixel[img.width];
+			for (size_t x = 0; x < img.width; x++)
+			{
+				data[y][x] = img.data[y][x];
+			}
+		}
 	}
 
 	bool loadImage(const char* filepath, int image_channels)
@@ -156,6 +164,23 @@ public:
 	Pixel*& operator[](std::size_t idx) 
 	{
 		return this->data[idx];
+	}
+
+	Image& operator=(const Image& img)
+	{
+		this->height = img.height;
+		this->width = img.width;
+		this->channels = img.channels;
+		this->data = new Pixel * [img.height];
+		for (size_t y = 0; y < img.height; y++)
+		{
+			this->data[y] = new Pixel[img.width];
+			for (size_t x = 0; x < img.width; x++)
+			{
+				data[y][x] = img.data[y][x];
+			}
+		}
+		return *this;
 	}
 
 	//~Image()
