@@ -44,6 +44,22 @@ public:
 			}
 		}
 	}
+	Image(int height_, int width_, int channels_)
+	{
+		height = height_;
+		width = width_;
+		channels = channels_;
+		data = new Pixel * [height];
+
+		for (size_t y = 0; y < height; y++)
+		{
+			data[y] = new Pixel[width];
+			for (size_t x = 0; x < width; x++)
+			{
+				data[y][x] = Pixel(channels);
+			}
+		}
+	}
 
 	bool loadImage(const char* filepath, int image_channels)
 	{
@@ -64,7 +80,7 @@ public:
 
 	void setImageMatrix(unsigned char* raw_data, int image_width, int image_height, int image_channels)
 	{
-		//deallocateImage();
+		deallocateImage();
 		this->width = image_width;
 		this->height = image_height;
 		this->channels = image_channels;
@@ -84,19 +100,20 @@ public:
 					pixelData[channel] = raw_data[index + channel];
 				}
 				Pixel px(pixelData, image_channels);
+				delete[] pixelData;
 				this->data[y][x] = px;
 			}
 		}
 	}
-	//void deallocateImage()
-	//{
-	//	for (size_t y = 0; y < height; y++)
-	//	{
-	//		Pixel* debuggy = this->data[y];
-	//		delete[] this->data[y];
-	//	}
-	//	delete[] this->data;
-	//}
+	void deallocateImage()
+	{
+		for (size_t y = 0; y < height; y++)
+		{
+			//Pixel* debuggy = this->data[y];
+			delete[] this->data[y];
+		}
+		delete[] this->data;
+	}
 
 	void setDimensions(int width_, int height_)
 	{
@@ -108,19 +125,19 @@ public:
 		this->channels = channels_;
 	}
 
-	void print()
-	{
-		for (size_t y = 0; y < height; y++)
-		{
-			for (size_t x = 0; x < width; x++)
-			{
-				data[y][x].print();
-				printf(", ");
-			}
-		}
-	}
+	//void print() 
+	//{
+	//	for (size_t y = 0; y < height; y++)
+	//	{
+	//		for (size_t x = 0; x < width; x++)
+	//		{
+	//			data[y][x].print();
+	//			printf(", ");
+	//		}
+	//	}
+	//}
 
-	void getTexture(unsigned char** textureData)
+	void getTexture(unsigned char** textureData) const
 	{
 		//delete[] textureData;
 
@@ -142,32 +159,37 @@ public:
 		}
 
 	}
-	int getWidth()
+	PixelType getType() const
+	{
+		return data[0][0].getType();
+	}
+	int getWidth() const
 	{
 		return width;
 	}
-	int getHeight()
+	int getHeight() const
 	{
 		return height;
 	}
-	int getChannels()
+	int getChannels() const
 	{
 		return channels;
 	}
-	bool isNull()
+	bool isNull() const
 	{
 		if (this->data == nullptr)
 			return true;
 		return false;
 	}
 
-	Pixel*& operator[](std::size_t idx) 
+	Pixel*& operator[](std::size_t idx) const
 	{
 		return this->data[idx];
 	}
 
 	Image& operator=(const Image& img)
 	{
+		deallocateImage();
 		this->height = img.height;
 		this->width = img.width;
 		this->channels = img.channels;
@@ -183,12 +205,12 @@ public:
 		return *this;
 	}
 
-	//~Image()
-	//{
-	//	for (size_t y = 0; y < height; y++)
-	//	{
-	//		delete[] this->data[y];
-	//	}
-	//	delete[] this->data;
-	//}
+	~Image()
+	{
+		for (size_t y = 0; y < height; y++)
+		{
+			delete[] this->data[y];
+		}
+		delete[] this->data;
+	}
 };

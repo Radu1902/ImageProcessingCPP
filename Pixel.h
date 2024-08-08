@@ -30,17 +30,16 @@ public:
 	//	this->channels = channels_;
 	//	this->type = type_;
 	//}
-	Pixel(Pixel& px)
+	Pixel(const Pixel& px)
 	{
 		this->channels = px.channels;
 		this->type = px.type;
 
-		this->data = new unsigned char[channels]; // + 1 for the terminator character (null)
+		this->data = new unsigned char[channels];
 		for (size_t i = 0; i < channels; i++)
 		{
 			data[i] = px.getValue(i);
 		}
-		//data[channels] = '\0';
 	}
 	Pixel(int channels_)
 	{
@@ -82,7 +81,7 @@ public:
 		else
 		{
 			this->channels = 3;
-			this->data = this->data = new unsigned char[channels];
+			this->data = new unsigned char[channels];
 			this->type = PixelType::RGB;
 			for (size_t i = 0; i < channels; i++)
 			{
@@ -170,7 +169,7 @@ public:
 		
 		this->data[channel] = value;
 	}
-	unsigned char getValue(int channel)
+	unsigned char getValue(int channel) const
 	{
 		try
 		{
@@ -183,7 +182,11 @@ public:
 			printf("invalid channel, %d", channel);
 		}
 	}
-	short normalize(short value)
+	PixelType getType() const
+	{
+		return type;
+	}
+	char normalize(int value)
 	{
 		if (value > 255)
 			return 255;
@@ -207,7 +210,7 @@ public:
 		//short result = (r + b + g) / 3;
 		result = normalize(result);
 
-		//delete[] data;
+		delete[] data;
 
 		this->channels = 1;
 		this->type = PixelType::GRAY;
@@ -248,8 +251,23 @@ public:
 		return this->data;
 	}
 
-	//~Pixel()
-	//{
-	//	delete[] data;
-	//}
+	Pixel& operator=(const Pixel& px)
+	{
+		delete[] data;
+
+		this->channels = px.channels;
+		this->type = px.type;
+
+		this->data = new unsigned char[channels];
+		for (size_t i = 0; i < channels; i++)
+		{
+			data[i] = px.getValue(i);
+		}
+		return *this;
+	}
+
+	~Pixel()
+	{
+		delete[] data;
+	}
 };

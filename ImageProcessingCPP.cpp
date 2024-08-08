@@ -1,10 +1,12 @@
 #include "image_loader.h"
+#include "implot.h"
+#include "implot_internal.h"
 #include "gui.h"
 #include "ImGuiFileDialog.h"
 #include "Image.h"
 #include "Operations.h"
 
-void drawGui(char** path, bool* keep_open) {
+void drawPathSelector(char** path, bool* keep_open) {
     // open Dialog Simple
     IGFD::FileDialogConfig config;
     config.path = ".";
@@ -42,6 +44,24 @@ void writeAndDisplayOutput(GLuint* output_image_texture, int* output_image_width
     IM_ASSERT(output_ret);
 }
 
+void saveOutputAsInput(GLuint* output_image_texture, int* output_image_width, int* output_image_height, int* output_image_channels, Image out_img)
+{
+    // literally only differs in the name of the saved bmp (outputInput.bmp instead of outputty.bmp)
+
+    unsigned char* out_texture;
+    out_img.getTexture(&out_texture);
+    *output_image_width = out_img.getWidth();
+    *output_image_height = out_img.getHeight();
+    *output_image_channels = out_img.getChannels();
+
+    writeTextureToFile("output/outputInput.bmp", *output_image_width, *output_image_height, *output_image_channels, out_texture);
+    bool output_ret = loadTextureFromFile("output/outputInput.bmp", output_image_texture, output_image_width, output_image_height);
+    IM_ASSERT(output_ret);
+
+
+
+}
+
 int main(int, char**)
 {
     glfwSetErrorCallback(glfw_error_callback);
@@ -59,6 +79,7 @@ int main(int, char**)
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+    ImPlot::CreateContext();
 
     // Setup Platform/Renderer backends
     ImGui_ImplGlfw_InitForOpenGL(window, true);
@@ -77,14 +98,15 @@ int main(int, char**)
 
     bool show_imgproc_operations = false;
 
-    bool show_path_chooser = false;
+    bool show_path_selector = false;
 
-    char* input_path = NULL;
+    char* input_path = nullptr;
 
     int input_image_width = 0;
     int input_image_height = 0;
     GLuint input_image_texture = 0;
     bool input_ret = false; 
+    int input_image_channels = 3;
 
     int output_image_width = 0;
     int output_image_height = 0;
@@ -97,8 +119,40 @@ int main(int, char**)
 
     static float size_coefficient = 1.0f;
 
+    // histogram
+
+    unsigned char* histogram = nullptr;
+    bool show_histogram = false;
+
+    // Pointwise ops
+
+    int brightnessOffset = 0;
+    bool show_brightness_dialog = false;
+
+    int contrastFactor = 1;
+    bool show_contrast_dialog = false;
+
+    bool show_linear_dialog = false;
+
+    int gamma = 1;
+    bool show_gamma_dialog = false;
+
+    char r1, s1, r2, s2;
+    bool show_piecewise_dialog = false;
+
+    int e;
+    int m;
+    bool show_em_dialog = false;
+
+    char x1, y1, x2, y2, x3, y3, x4, y4, x5, y5;
+    bool show_spline_dialog = false;
+
+    // thresholdings
+
     int thresh = 255;
     bool show_thresh_dialog = false;
+
+
 
     while (!glfwWindowShouldClose(window))
     {
@@ -121,9 +175,12 @@ int main(int, char**)
             {
                 if (ImGui::BeginMenu("Main menu"))
                 {
-                    ImGui::MenuItem("Choose file", NULL, &show_path_chooser);
+                    ImGui::MenuItem("Choose file", NULL, &show_path_selector);
+                    
+                    
                     ImGui::EndMenu();
                 }
+
                 if (show_imgproc_operations)
                 {
                     if (ImGui::BeginMenu("Basic operations"))
@@ -135,10 +192,66 @@ int main(int, char**)
                             writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
                             show_output_image = true;
                         }
+                        if (show_input_image)
+                        {
+                            if (ImGui::MenuItem("Show input image histogram"))
+                            {
+                                getHistogram(in_img, 0, &histogram);
+                                show_histogram = true;
+                            }
+                        }
+                        if (show_output_image)
+                        {
+                            if (ImGui::MenuItem("Show output image histogram"))
+                            {
+                                getHistogram(out_img, 0, &histogram);
+                                show_histogram = true;
+                            }
+                        }
                         ImGui::EndMenu();
                     }
                     if (ImGui::BeginMenu("Pointwise operations"))
                     {
+                        if (ImGui::MenuItem("Modify brightness"))
+                        {
+                            show_brightness_dialog = true;
+                        }
+                        if (ImGui::MenuItem("Modify contrast"))
+                        {
+                            show_contrast_dialog = true;
+                        }
+                        if (ImGui::MenuItem("Modify brightness and contrast"))
+                        {
+                            show_linear_dialog = true;
+                        }
+                        if (ImGui::MenuItem("Logarithmic operator"))
+                        {
+
+                        }
+                        if (ImGui::MenuItem("Gamma operator"))
+                        {
+                            show_gamma_dialog = true;
+                        }
+                        if (ImGui::MenuItem("Piecewise linear contrast"))
+                        {
+                            show_piecewise_dialog = true;
+                        }
+                        if (ImGui::MenuItem("EM - operator"))
+                        {
+                            show_em_dialog = true;
+                        }
+                        if (ImGui::MenuItem("Spline tool"))
+                        {
+                            show_spline_dialog = true;
+                        }
+                        if (ImGui::MenuItem("Color contrast stretching"))
+                        {
+
+                        }
+                        if (ImGui::MenuItem("Histogram equalization"))
+                        {
+
+                        }
                         ImGui::EndMenu();
                     }
                     if (ImGui::BeginMenu("Thresholdings"))
@@ -161,11 +274,36 @@ int main(int, char**)
 
 
 
-        if (show_path_chooser)
+        if (show_path_selector)
         {
-            drawGui(&input_path, &show_path_chooser);
+            drawPathSelector(&input_path, &show_path_selector);
         }
 
+        if (show_histogram)
+        {
+            ImGui::Begin("Histogram", &show_histogram);
+            if (ImPlot::BeginPlot("Histogram")) 
+            {
+                ImPlot::PlotBars("Pixel value", histogram, 256);
+                //ImPlot::PlotLine("My Line Plot", x_data, y_data, 1000);
+                ImPlot::EndPlot();
+            }
+            ImGui::End();
+        }
+
+        if (show_brightness_dialog)
+        {
+            ImGui::Begin("Brightness offset");
+            ImGui::SliderInt("Choose offset", &brightnessOffset, -255, 255);
+            if (ImGui::Button("Choose"))
+            {
+                out_img = modifyBrightess(in_img, brightnessOffset);
+                writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                show_output_image = true;
+                show_brightness_dialog = false;
+            }
+            ImGui::End();
+        }
         if (show_thresh_dialog)
         {
             ImGui::Begin("Manual thresholding");
@@ -179,6 +317,7 @@ int main(int, char**)
             }
             ImGui::End();
         }
+        
 
         {
             ImGui::Begin("Input Image");
@@ -210,6 +349,13 @@ int main(int, char**)
             ImGui::Text("size = %d x %d", output_image_width, output_image_height);
             if (show_output_image)
             {
+                if (ImGui::Button("Save output image as input image"))
+                {
+                    in_img = out_img;
+                    saveOutputAsInput(&input_image_texture, &input_image_width, &input_image_height, &input_image_channels, in_img);
+                    // input_ret = loadTextureFromFile(input_path, &input_image_texture, &input_image_width, &input_image_height);
+
+                }
                 ImGui::Image((void*)(intptr_t)output_image_texture, ImVec2(output_image_width * size_coefficient, output_image_height * size_coefficient));
             }
             ImGui::End();
@@ -229,6 +375,7 @@ int main(int, char**)
     // Cleanup
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
+    ImPlot::DestroyContext();
     ImGui::DestroyContext();
 
     

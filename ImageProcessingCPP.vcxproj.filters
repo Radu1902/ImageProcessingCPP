@@ -22,6 +22,21 @@
     <Filter Include="Resource Files\Input">
       <UniqueIdentifier>{189ffc15-a9a8-4a90-897e-2aa0cd2297b3}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\stb">
+      <UniqueIdentifier>{64782187-747a-4bee-9557-f86c50afea2a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\implot">
+      <UniqueIdentifier>{72517d74-9904-43c0-af04-b3bb8c14e0bd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\file dialog">
+      <UniqueIdentifier>{eac72a9a-2005-4626-91d1-bbf8680ff8fb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\implot">
+      <UniqueIdentifier>{0516afdd-75e7-4ee2-ba0d-a0673b7d8916}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\file dialog">
+      <UniqueIdentifier>{92c47954-e2bb-46e0-a64c-79d5486e4c88}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ImageProcessingCPP.cpp">
@@ -51,8 +66,14 @@
     <ClCompile Include="image_loader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="implot.cpp">
+      <Filter>Source Files\implot</Filter>
+    </ClCompile>
+    <ClCompile Include="implot_items.cpp">
+      <Filter>Source Files\implot</Filter>
+    </ClCompile>
     <ClCompile Include="ImGuiFileDialog.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\file dialog</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -83,22 +104,10 @@
     <ClInclude Include="imstb_textedit.h">
       <Filter>Header Files\imgui</Filter>
     </ClInclude>
-    <ClInclude Include="stb_image.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="image_loader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="gui.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="stb_image_write.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ImGuiFileDialog.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ImGuiFileDialogConfig.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Image.h">
@@ -109,6 +118,24 @@
     </ClInclude>
     <ClInclude Include="Operations.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="stb_image_write.h">
+      <Filter>Header Files\stb</Filter>
+    </ClInclude>
+    <ClInclude Include="stb_image.h">
+      <Filter>Header Files\stb</Filter>
+    </ClInclude>
+    <ClInclude Include="ImGuiFileDialogConfig.h">
+      <Filter>Header Files\file dialog</Filter>
+    </ClInclude>
+    <ClInclude Include="ImGuiFileDialog.h">
+      <Filter>Header Files\file dialog</Filter>
+    </ClInclude>
+    <ClInclude Include="implot.h">
+      <Filter>Header Files\implot</Filter>
+    </ClInclude>
+    <ClInclude Include="implot_internal.h">
+      <Filter>Header Files\implot</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
