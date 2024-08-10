@@ -31,7 +31,7 @@ void drawPathSelector(char** path, bool* keep_open) {
     }
 }
 
-void writeAndDisplayOutput(GLuint* output_image_texture, int* output_image_width, int* output_image_height, int *output_image_channels, Image out_img)
+void writeAndDisplayOutput(GLuint* output_image_texture, int* output_image_width, int* output_image_height, int* output_image_channels, Image out_img)
 {
     unsigned char* out_texture;
     out_img.getTexture(&out_texture);
@@ -70,7 +70,7 @@ int main(int, char**)
 
     const char* glsl_version = decide_gl_glsl_version();
 
-    GLFWwindow* window = glfwCreateWindow(1280, 720, "Dear ImGui GLFW+OpenGL3 example", nullptr, nullptr);
+    GLFWwindow* window = glfwCreateWindow(1280, 720, "Image processing", nullptr, nullptr);
     if (window == nullptr)
         return 1;
     glfwMakeContextCurrent(window);
@@ -86,7 +86,8 @@ int main(int, char**)
 
     ImGui_ImplOpenGL3_Init(glsl_version);
 
-
+    static ImU32 colorDataRGB[3] = { 0xFF0000FF, 0xFF00FF00, 0xFFFF0000 };
+    int customRGBMap = ImPlot::AddColormap("RGBColors", colorDataRGB, 32);
 
     bool show_demo_window = true;
 
@@ -105,7 +106,7 @@ int main(int, char**)
     int input_image_width = 0;
     int input_image_height = 0;
     GLuint input_image_texture = 0;
-    bool input_ret = false; 
+    bool input_ret = false;
     int input_image_channels = 3;
 
     int output_image_width = 0;
@@ -121,7 +122,9 @@ int main(int, char**)
 
     // histogram
 
-    unsigned char* histogram = nullptr;
+    unsigned int* chan1Histogram = nullptr;
+    unsigned int* chan2Histogram = nullptr;
+    unsigned int* chan3Histogram = nullptr;
     bool show_histogram = false;
 
     // Pointwise ops
@@ -129,18 +132,21 @@ int main(int, char**)
     int brightnessOffset = 0;
     bool show_brightness_dialog = false;
 
-    int contrastFactor = 1;
+    float contrastFactor = 1.0f;
     bool show_contrast_dialog = false;
 
     bool show_linear_dialog = false;
 
-    int gamma = 1;
+    float gamma = 1;
     bool show_gamma_dialog = false;
 
-    char r1, s1, r2, s2;
+    int r1 = 1;
+    int s1 = 1;
+    int r2 = 254;
+    int s2 = 254;
     bool show_piecewise_dialog = false;
 
-    int e;
+    float e;
     int m;
     bool show_em_dialog = false;
 
@@ -166,9 +172,9 @@ int main(int, char**)
         if (show_demo_window)
             ImGui::ShowDemoWindow(&show_demo_window);
 
-        
 
-        
+
+
 
         {
             if (ImGui::BeginMainMenuBar())
@@ -176,8 +182,8 @@ int main(int, char**)
                 if (ImGui::BeginMenu("Main menu"))
                 {
                     ImGui::MenuItem("Choose file", NULL, &show_path_selector);
-                    
-                    
+
+
                     ImGui::EndMenu();
                 }
 
@@ -192,19 +198,43 @@ int main(int, char**)
                             writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
                             show_output_image = true;
                         }
-                        if (show_input_image)
+                        if (show_input_image) // if show_input_image is true, it means in_img is not null
                         {
                             if (ImGui::MenuItem("Show input image histogram"))
                             {
-                                getHistogram(in_img, 0, &histogram);
+                                getHistogram(in_img, 0, &chan1Histogram);
+                                if (in_img.getType() == PixelType::RGB)
+                                {
+                                    getHistogram(in_img, 1, &chan2Histogram);
+                                    getHistogram(in_img, 2, &chan3Histogram);
+                                }
+                                else // if img isn't rgb, free the other histograms so that they don't remain loaded with data from previous images
+                                {
+                                    delete[] chan2Histogram;
+                                    delete[] chan3Histogram;
+                                    chan2Histogram = nullptr;
+                                    chan3Histogram = nullptr;
+                                }
                                 show_histogram = true;
                             }
                         }
-                        if (show_output_image)
+                        if (show_output_image) // it means out_img is not null
                         {
                             if (ImGui::MenuItem("Show output image histogram"))
                             {
-                                getHistogram(out_img, 0, &histogram);
+                                getHistogram(out_img, 0, &chan1Histogram);
+                                if (out_img.getType() == PixelType::RGB)
+                                {
+                                    getHistogram(out_img, 1, &chan2Histogram);
+                                    getHistogram(out_img, 2, &chan3Histogram);
+                                }
+                                else
+                                {
+                                    delete[] chan2Histogram;
+                                    delete[] chan3Histogram;
+                                    chan2Histogram = nullptr;
+                                    chan3Histogram = nullptr;
+                                }
                                 show_histogram = true;
                             }
                         }
@@ -226,7 +256,10 @@ int main(int, char**)
                         }
                         if (ImGui::MenuItem("Logarithmic operator"))
                         {
+                            out_img = logOperator(in_img);
 
+                            writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                            show_output_image = true;
                         }
                         if (ImGui::MenuItem("Gamma operator"))
                         {
@@ -272,28 +305,49 @@ int main(int, char**)
             }
         }
 
+        if (show_histogram)
+        {
+            ImGui::Begin("Histogram", &show_histogram);
 
+            if (chan1Histogram != nullptr && chan2Histogram != nullptr && chan3Histogram != nullptr)
+            {
+                ImPlot::PushColormap(customRGBMap);
+                if (ImPlot::BeginPlot("RGB Histogram"))
+                {
+                    ImPlot::PlotBars("Channel 1", chan1Histogram, 256);
+                    ImPlot::PlotBars("Channel 2", chan2Histogram, 256);
+                    ImPlot::PlotBars("Channel 3", chan3Histogram, 256);
+                    ImPlot::EndPlot();
+                    ImPlot::PopColormap();
+                }
+            }
+            else
+            {
+                if (chan1Histogram != nullptr)
+                {
+                    if (ImPlot::BeginPlot("Histogram"))
+                    {
+                        ImPlot::PlotBars("Pixel values", chan1Histogram, 256);
+                        ImPlot::EndPlot();
+                    }
+                }
+            }
+
+            ImGui::End();
+        }
+
+        // dialogs
 
         if (show_path_selector)
         {
             drawPathSelector(&input_path, &show_path_selector);
         }
 
-        if (show_histogram)
-        {
-            ImGui::Begin("Histogram", &show_histogram);
-            if (ImPlot::BeginPlot("Histogram")) 
-            {
-                ImPlot::PlotBars("Pixel value", histogram, 256);
-                //ImPlot::PlotLine("My Line Plot", x_data, y_data, 1000);
-                ImPlot::EndPlot();
-            }
-            ImGui::End();
-        }
+        // pointwise operations
 
         if (show_brightness_dialog)
         {
-            ImGui::Begin("Brightness offset");
+            ImGui::Begin("Brightness offset", &show_brightness_dialog);
             ImGui::SliderInt("Choose offset", &brightnessOffset, -255, 255);
             if (ImGui::Button("Choose"))
             {
@@ -304,9 +358,105 @@ int main(int, char**)
             }
             ImGui::End();
         }
+        if (show_contrast_dialog)
+        {
+            ImGui::Begin("Modify contrast", &show_contrast_dialog);
+            ImGui::InputFloat("Choose contrast factor", &contrastFactor);
+            if (ImGui::Button("Choose"))
+            {
+                if (contrastFactor < 0)
+                {
+                    ImGui::Text("Contrast factor must be positive.");
+                }
+                else
+                {
+                    out_img = modifyContrast(in_img, contrastFactor);
+                    writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                    show_output_image = true;
+                    show_contrast_dialog = false;
+                }
+            }
+            ImGui::End();
+        }
+        if (show_linear_dialog)
+        {
+            ImGui::Begin("Modify contrast and brightness ", &show_linear_dialog);
+            ImGui::InputInt("Choose offset", &brightnessOffset);
+            ImGui::InputFloat("Choose contrast factor", &contrastFactor);
+            if (ImGui::Button("Choose"))
+            {
+                if (contrastFactor < 0)
+                {
+                    ImGui::Text("Contrast factor must be positive.");
+                }
+                else
+                {
+                    out_img = modifyContrastAndBrightness(in_img, contrastFactor, brightnessOffset);
+                    writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                    show_output_image = true;
+                    show_linear_dialog = false;
+                }
+            }
+            ImGui::End();
+        }
+        if (show_gamma_dialog)
+        {
+            ImGui::Begin("Gamma operator", &show_gamma_dialog);
+            ImGui::InputFloat("Choose contrast factor", &gamma);
+            if (ImGui::Button("Choose"))
+            {
+                if (gamma < 0)
+                {
+                    ImGui::Text("Contrast factor must be positive.");
+                }
+                else
+                {
+                    out_img = gammaOperator(in_img, gamma);
+                    writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                    show_output_image = true;
+                    show_gamma_dialog = false;
+                }
+            }
+            ImGui::End();
+        }
+        if (show_piecewise_dialog)
+        {
+            ImGui::Begin("Piecewise contrast", &show_piecewise_dialog);
+            ImGui::SliderInt("r1", &r1, 1, r2 - 1);
+            ImGui::SliderInt("s1", &s1, 1, s2 - 1);
+            ImGui::SliderInt("r2", &r2, r1 + 1, 254);
+            ImGui::SliderInt("s2", &s2, s1 + 1, 254);
+            if (ImGui::Button("Choose"))
+            {
+                {
+                    out_img = piecewiseLinearContrast(in_img, r1, s1, r2, s2);
+                    writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                    show_output_image = true;
+                    show_piecewise_dialog = false;
+                }
+            }
+            ImGui::End();
+        }
+        if (show_em_dialog)
+        {
+            ImGui::Begin("EM contrast", &show_piecewise_dialog);
+            ImGui::InputFloat("s1", &e);
+            ImGui::InputInt("r1", &m);
+            if (ImGui::Button("Choose"))
+            {
+                {
+                    out_img = emOperator(in_img, e, m);
+                    writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                    show_output_image = true;
+                    show_piecewise_dialog = false;
+                }
+            }
+            ImGui::End();
+        }
+
         if (show_thresh_dialog)
         {
-            ImGui::Begin("Manual thresholding");
+            ImGui::Begin("Manual thresholding", &show_thresh_dialog);
             ImGui::SliderInt("Choose Threshold", &thresh, 0, 255);
             if (ImGui::Button("Choose"))
             {
@@ -317,7 +467,7 @@ int main(int, char**)
             }
             ImGui::End();
         }
-        
+
 
         {
             ImGui::Begin("Input Image");
@@ -378,7 +528,7 @@ int main(int, char**)
     ImPlot::DestroyContext();
     ImGui::DestroyContext();
 
-    
+
     glfwDestroyWindow(window);
     glfwTerminate();
 

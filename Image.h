@@ -159,6 +159,25 @@ public:
 		}
 
 	}
+	unsigned char getMaxPixel() const
+	{
+		unsigned char maxVal = 0;
+
+		for (size_t y = 0; y < height; y++)
+		{
+			for (size_t x = 0; x < width; x++)
+			{
+				Pixel grayPixel(data[y][x]);
+				grayPixel.cvtGrayscale();
+				if (grayPixel.getValue(0) > maxVal)
+				{
+					maxVal = grayPixel.getValue(0);
+				}
+			}
+		}
+
+		return maxVal;
+	}
 	PixelType getType() const
 	{
 		return data[0][0].getType();
