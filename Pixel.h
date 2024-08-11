@@ -163,7 +163,7 @@ public:
 	{
 		return type;
 	}
-	char normalize(int value)
+	char clamp(int value)
 	{
 		if (value > 255)
 			return 255;
@@ -180,43 +180,113 @@ public:
 		if (data == nullptr)
 			return;
 
+		if (type == PixelType::HSV)
+			cvtRGB();
+
 		short r = data[0];
 		short g = data[1];
 		short b = data[2];
 		short result = r * 0.30 + g * 0.59 + b * 0.11;
 		//short result = (r + b + g) / 3;
-		result = normalize(result);
+		result = clamp(result);
 
 		delete[] data;
 
 		this->channels = 1;
 		this->type = PixelType::GRAY;
 		this->data = new unsigned char[channels];
-		this->data[0] = (char)result;
+		this->data[0] = (unsigned char)result;
 	}
 	void cvtRGB()
 	{
-		if (type == PixelType::RGB || type == PixelType::HSV)
+
+		if (type == PixelType::RGB)
 			return;
 
 		if (data == nullptr)
 			return;
 
-		char value = data[0];
+		if (type == PixelType::GRAY)
+		{
+			unsigned char value = data[0];
 
-		delete[] this->data;
+			delete[] this->data;
 
-		this->channels = 3;
-		this->type = PixelType::RGB;
-		this->data = new unsigned char[channels];
-		this->data[0] = value;
-		this->data[1] = value;
-		this->data[2] = value;
+			this->channels = 3;
+			this->type = PixelType::RGB;
+			this->data = new unsigned char[channels];
+			this->data[0] = value;
+			this->data[1] = value;
+			this->data[2] = value;
+			return;
+		}
 
+		if (type == PixelType::HSV)
+		{
+			short hDeg = data[0] * 2; // h was divided by 2 when converting from rgb, in order to fit in unsigned char datatype
+			float s = (float)data[1] / 255.0f;
+			unsigned char v = data[2];
+
+			delete[] this->data;
+
+			float hPrime = (float)hDeg / 60.0f;
+			unsigned char k = floor(hPrime);
+			float h = hPrime - k;
+
+			unsigned char r;
+			unsigned char g;
+			unsigned char b;
+
+			unsigned char x = v * (1 - s);
+			unsigned char y = v * (1 - s * h);
+			unsigned char z = v * (1 - s * (1 - h));
+
+			switch (k)
+			{
+			case 0:
+				r = v;
+				g = z;
+				b = x;
+				break;
+			case 1:
+				r = y;
+				g = v;
+				b = x;
+				break;
+			case 2:
+				r = x;
+				g = v;
+				b = z;
+				break;
+			case 3:
+				r = x;
+				g = y;
+				b = v;
+				break;
+			case 4:
+				r = z;
+				g = x;
+				b = v;
+				break;
+			case 5:
+				r = v;
+				g = x;
+				b = y;
+				break;
+			}
+
+			type = PixelType::RGB;
+			data = new unsigned char[channels];
+			data[0] = r;
+			data[1] = g;
+			data[2] = b;
+		}
 	}
 	void cvtHSV()
 	{
 		if (type == PixelType::HSV)
+			return;
+		if (data == nullptr)
 			return;
 		if (type == PixelType::GRAY)
 			cvtRGB();
@@ -225,41 +295,49 @@ public:
 		unsigned char g = data[1];
 		unsigned char b = data[2];
 
-		unsigned char v = MAX(r, MAX(g, b));
-		unsigned char s = (v - MIN(r, MIN(g, b))) / v;
-		unsigned char h;
+		delete[] data;
 
-		if (r == g  && g == b)
+		int v = MAX(r, MAX(g, b));
+
+		int s;
+		if (v == 0)
+		{
+			s = 0;
+		}
+		else
+		{
+			s = (int)(((float)(v - MIN(r, MIN(g, b))) / (float)v) * 255.0f);
+		}
+
+		float h;
+		if (r == g && g == b)
 		{
 			h = 0;
 		}
 		else if (v == r && g >= b)
 		{
-			h = ((float)(g - b) / (float)(v - MIN(r, MIN(g, b))) * 60.0f) / 2;
+			h = (float)(g - b) / (float)(v - MIN(r, MIN(g, b))) * 60.0f;
 		}
 		else if (g == v)
 		{
-			h = ((float)(b - r) / (float)(v - MIN(r, MIN(g, b)) + 2) * 60.0f) / 2;
+			h = (float)(((float)(b - r) / (float)(v - MIN(r, MIN(g, b)))) + 2) * 60.f;
 		}
 		else if (b == v)
 		{
-			h = ((float)(r - g) / (float)(v - MIN(r, MIN(g, b)) + 4) * 60.0f) / 2;
+			h = (float)(((float)(r - g) / (float)(v - MIN(r, MIN(g, b)))) + 4) * 60.f;
 		}
 		else if (v == r && g < b)
 		{
-			h = ((float)(r - b) / (float)(v - MIN(r, MIN(g, b)) + 5) * 60.0f) / 2;
+			h = (float)(((float)(r - b) / (float)(v - MIN(r, MIN(g, b)))) + 5) * 60.f;
 		}
 
+		data = new unsigned char[channels];
+		data[0] = (unsigned char)(h/2); // division by 2 so that h takes values between 0 and 180 instead of 0 and 360, so that it fits in unsigned char datatype.
+		data[1] = (unsigned char)s;
+		data[2] = (unsigned char)v;
+		type = PixelType::HSV;
 	}
-	void print()
-	{
-		printf("[");
-		for (size_t i = 0; i < channels; i++)
-		{
-			printf("%d ", data[i]);
-		}
-		printf("]");
-	}
+
 	unsigned char* getData()
 	{
 		return this->data;

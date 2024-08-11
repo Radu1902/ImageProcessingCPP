@@ -42,6 +42,48 @@ Image convert2Gray(Image input)
 	return grayscale;
 }
 
+Image convert2RGB(Image input)
+{
+	if (input.isNull())
+	{
+		Image img;
+		return img;
+	}
+	Image rgb(input);
+
+	for (size_t y = 0; y < input.getHeight(); y++)
+	{
+		for (size_t x = 0; x < input.getWidth(); x++)
+		{
+			rgb[y][x].cvtRGB();
+		}
+	}
+	rgb.setChannels(3);
+
+	return rgb;
+}
+
+Image convert2HSV(Image input)
+{
+	if (input.isNull())
+	{
+		Image img;
+		return img;
+	}
+	Image hsv(input);
+
+	for (size_t y = 0; y < input.getHeight(); y++)
+	{
+		for (size_t x = 0; x < input.getWidth(); x++)
+		{
+			hsv[y][x].cvtHSV();
+		}
+	}
+	hsv.setChannels(3);
+
+	return hsv;
+}
+
 // pointwise operations
 
 unsigned char pixelClamp(int value)
@@ -313,6 +355,56 @@ Image splineOperator(Image input, int* splinePointsX, int* splinePointsY)
 		return img;
 	}
 	unsigned char* lut = getSplineLookUpTable(splinePointsX, splinePointsY);
+	Image output = applyLookUpTable(input, lut);
+	delete[] lut;
+	return output;
+}
+
+unsigned char* getStretchedLookUpTable(unsigned int* histogram)
+{
+	unsigned char* lut = new unsigned char[256];
+
+	unsigned char minPixel = 0;
+	unsigned char maxPixel = 255;
+
+	for (unsigned char pixel = 0; pixel < 256; pixel++)
+	{
+		if (histogram[pixel] > 0)
+		{
+			minPixel = pixel;
+			break;
+		}
+	}
+	for (unsigned char pixel = 255; pixel >= 0; pixel--)
+	{
+		if (histogram[pixel] > 0)
+		{
+			maxPixel = pixel;
+			break;
+		}
+	}
+
+	for (size_t pixelValue = 0; pixelValue < 256; pixelValue++)
+	{
+		int correspondingValue = (int)(255.0f / (float)(maxPixel - minPixel)) * (float)(pixelValue - minPixel);
+
+		histogram[pixelValue] = pixelClamp(correspondingValue);
+	}
+
+	return lut;
+}
+Image histogramStretchingOperator(Image input)
+{
+	if (input.isNull())
+	{
+		Image img;
+		return img;
+	}
+	Image hsvInput = convert2HSV(input);
+	unsigned int* valueHistogram;
+	getHistogram(hsvInput, 2, &valueHistogram);
+	unsigned char* lut = getStretchedLookUpTable(valueHistogram);
+	delete[] valueHistogram;
 	Image output = applyLookUpTable(input, lut);
 	delete[] lut;
 	return output;

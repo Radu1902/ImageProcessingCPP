@@ -165,8 +165,6 @@ int main(int, char**)
         splineLine[i] = i;
     bool show_spline_dialog = false;
 
-
-
     // thresholdings
 
     int thresh = 255;
@@ -212,12 +210,26 @@ int main(int, char**)
                             writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
                             show_output_image = true;
                         }
+                        if (ImGui::MenuItem("Convert to RGB"))
+                        {
+                            out_img = convert2RGB(in_img);
+
+                            writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                            show_output_image = true;
+                        }
+                        if (ImGui::MenuItem("Convert to HSV"))
+                        {
+                            out_img = convert2HSV(in_img);
+
+                            writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                            show_output_image = true;
+                        }
                         if (show_input_image) // if show_input_image is true, it means in_img is not null
                         {
                             if (ImGui::MenuItem("Show input image histogram"))
                             {
                                 getHistogram(in_img, 0, &chan1Histogram);
-                                if (in_img.getType() == PixelType::RGB)
+                                if (in_img.getType() != PixelType::GRAY)
                                 {
                                     getHistogram(in_img, 1, &chan2Histogram);
                                     getHistogram(in_img, 2, &chan3Histogram);
@@ -237,7 +249,7 @@ int main(int, char**)
                             if (ImGui::MenuItem("Show output image histogram"))
                             {
                                 getHistogram(out_img, 0, &chan1Histogram);
-                                if (out_img.getType() == PixelType::RGB)
+                                if (out_img.getType() != PixelType::GRAY)
                                 {
                                     getHistogram(out_img, 1, &chan2Histogram);
                                     getHistogram(out_img, 2, &chan3Histogram);
@@ -293,7 +305,10 @@ int main(int, char**)
                         }
                         if (ImGui::MenuItem("Color contrast stretching"))
                         {
+                            out_img = histogramStretchingOperator(in_img);
 
+                            writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                            show_output_image = true;
                         }
                         if (ImGui::MenuItem("Histogram equalization"))
                         {
@@ -328,7 +343,7 @@ int main(int, char**)
             if (chan1Histogram != nullptr && chan2Histogram != nullptr && chan3Histogram != nullptr)
             {
                 ImPlot::PushColormap(customRGBMap);
-                if (ImPlot::BeginPlot("RGB Histogram"))
+                if (ImPlot::BeginPlot("Multiple channel histogram"))
                 {
                     ImPlot::PlotBars("Channel 1", chan1Histogram, 256);
                     ImPlot::PlotBars("Channel 2", chan2Histogram, 256);
