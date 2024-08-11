@@ -1,10 +1,12 @@
 #pragma once
+#define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
+#define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
 
 enum class PixelType
 {
 	GRAY,
 	RGB,
-	RGBA
+	HSV
 };
 
 class Pixel
@@ -43,15 +45,15 @@ public:
 	}
 	Pixel(int channels_)
 	{
-
-		if (channels_ == 1)
-			this->type = PixelType::GRAY;
-		else if (channels_ == 3)
-			this->type = PixelType::RGB;
-		else if (channels_ == 4)
-			this->type = PixelType::RGBA;
-		else
+		switch (channels_)
 		{
+		case 1:
+			this->type = PixelType::GRAY;
+			break;
+		case 3:
+			this->type = PixelType::RGB;
+			break;
+		default:
 			this->channels = 3;
 			this->data = this->data = new unsigned char[channels];
 			this->type = PixelType::RGB;
@@ -72,16 +74,17 @@ public:
 	Pixel(unsigned char* data_, int channels_)
 	{
 
-		if (channels_ == 1)
-			this->type = PixelType::GRAY;
-		else if (channels_ == 3)
-			this->type = PixelType::RGB;
-		else if (channels_ == 4)
-			this->type = PixelType::RGBA;
-		else
+		switch (channels_)
 		{
+		case 1:
+			this->type = PixelType::GRAY;
+			break;
+		case 3:
+			this->type = PixelType::RGB;
+			break;
+		default:
 			this->channels = 3;
-			this->data = new unsigned char[channels];
+			this->data = this->data = new unsigned char[channels];
 			this->type = PixelType::RGB;
 			for (size_t i = 0; i < channels; i++)
 			{
@@ -98,69 +101,43 @@ public:
 		}
 	}
 
-	//Pixel(PixelType type_)
-	//{
-	//	switch (type)
-	//	{
-	//	case PixelType::GRAY:
-	//		this->channels = 1;
-	//		break;
-	//	case PixelType::RGB:
-	//		this->channels = 3;
-	//		break;
-	//	case PixelType::RGBA:
-	//		this->channels = 4;
-	//		break;
-	//	default:
-	//		this->channels = 3;
-	//		this->data = new unsigned char[channels];
-	//		this->type = PixelType::RGB;
-	//		for (size_t i = 0; i < channels; i++)
-	//		{
-	//			data[i] = 0;
-	//		}
-	//		return;
-	//	}
-	//	this->type = type_;
-	//	this->data = new unsigned char[channels];
-	//	for (size_t i = 0; i < channels; i++)
-	//	{
-	//		data[i] = 0;
-	//	}
-	//}
-	//Pixel(unsigned char* data_, PixelType type_)
-	//{
-	//	switch (type)
-	//	{
-	//	case PixelType::GRAY:
-	//		this->channels = 1;
-	//		break;
-	//	case PixelType::RGB:
-	//		this->channels = 3;
-	//		break;
-	//	case PixelType::RGBA:
-	//		this->channels = 4;
-	//		break;
-	//	default:
-	//		this->channels = 3;
-	//		this->data = new unsigned char[channels];
-	//		this->type = PixelType::RGB;
-	//		for (size_t i = 0; i < channels; i++)
-	//		{
-	//			data[i] = 0;
-	//		}
-	//		return;
-	//	}
+	Pixel(PixelType type_)
+	{
+		if (type_ == PixelType::GRAY)
+		{
+			this->channels = 1;
+		}
+		else
+		{
+			this->channels = 3;
+		}
 
-	//	this->type = type_;
+		this->type = type_;
+		this->data = new unsigned char[channels];
+		for (size_t i = 0; i < channels; i++)
+		{
+			data[i] = 0;
+		}
+	}
+	Pixel(unsigned char* data_, PixelType type_)
+	{
+		if (type_ == PixelType::GRAY)
+		{
+			this->channels = 1;
+		}
+		else
+		{
+			this->channels = 3;
+		}
 
+		this->type = type_;
 
-	//	this->data = new unsigned char[channels];
-	//	for (size_t i = 0; i < channels; i++)
-	//	{
-	//		data[i] = data_[i];
-	//	}
-	//}
+		this->data = new unsigned char[channels];
+		for (size_t i = 0; i < channels; i++)
+		{
+			data[i] = data_[i];
+		}
+	}
 
 	void setValue(unsigned char value, int channel)
 	{
@@ -197,7 +174,7 @@ public:
 
 	void cvtGrayscale()
 	{
-		if (channels < 3)
+		if (type == PixelType::GRAY)
 			return;
 
 		if (data == nullptr)
@@ -217,9 +194,9 @@ public:
 		this->data = new unsigned char[channels];
 		this->data[0] = (char)result;
 	}
-	void cvtColor()
+	void cvtRGB()
 	{
-		if (channels == 1)
+		if (type == PixelType::RGB || type == PixelType::HSV)
 			return;
 
 		if (data == nullptr)
@@ -235,6 +212,43 @@ public:
 		this->data[0] = value;
 		this->data[1] = value;
 		this->data[2] = value;
+
+	}
+	void cvtHSV()
+	{
+		if (type == PixelType::HSV)
+			return;
+		if (type == PixelType::GRAY)
+			cvtRGB();
+
+		unsigned char r = data[0];
+		unsigned char g = data[1];
+		unsigned char b = data[2];
+
+		unsigned char v = MAX(r, MAX(g, b));
+		unsigned char s = (v - MIN(r, MIN(g, b))) / v;
+		unsigned char h;
+
+		if (r == g  && g == b)
+		{
+			h = 0;
+		}
+		else if (v == r && g >= b)
+		{
+			h = ((float)(g - b) / (float)(v - MIN(r, MIN(g, b))) * 60.0f) / 2;
+		}
+		else if (g == v)
+		{
+			h = ((float)(b - r) / (float)(v - MIN(r, MIN(g, b)) + 2) * 60.0f) / 2;
+		}
+		else if (b == v)
+		{
+			h = ((float)(r - g) / (float)(v - MIN(r, MIN(g, b)) + 4) * 60.0f) / 2;
+		}
+		else if (v == r && g < b)
+		{
+			h = ((float)(r - b) / (float)(v - MIN(r, MIN(g, b)) + 5) * 60.0f) / 2;
+		}
 
 	}
 	void print()

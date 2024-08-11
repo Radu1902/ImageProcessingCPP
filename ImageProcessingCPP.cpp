@@ -5,6 +5,7 @@
 #include "ImGuiFileDialog.h"
 #include "Image.h"
 #include "Operations.h"
+#include <vector>
 
 void drawPathSelector(char** path, bool* keep_open) {
     // open Dialog Simple
@@ -137,7 +138,7 @@ int main(int, char**)
 
     bool show_linear_dialog = false;
 
-    float gamma = 1;
+    float gamma = 1.0f;
     bool show_gamma_dialog = false;
 
     int r1 = 1;
@@ -146,19 +147,32 @@ int main(int, char**)
     int s2 = 254;
     bool show_piecewise_dialog = false;
 
-    float e;
-    int m;
+    float e = 1.0f;
+    float m = 1.0f;
     bool show_em_dialog = false;
-
-    char x1, y1, x2, y2, x3, y3, x4, y4, x5, y5;
+    
+    int splinePointsX[7];
+    splinePointsX[0] = 0;
+    for (size_t i = 1; i < 6; i++)
+        splinePointsX[i] = -1;
+    int splinePointsY[7];
+    splinePointsY[0] = 0;
+    for (size_t i = 1; i < 6; i++)
+        splinePointsY[i] = -1;
+    int splinePointsIndex = 1;
+    float splineLine[256];
+    for (size_t i = 0; i < 256; i++)
+        splineLine[i] = i;
     bool show_spline_dialog = false;
+
+
 
     // thresholdings
 
     int thresh = 255;
     bool show_thresh_dialog = false;
 
-
+    static ImVec2 pinned = ImVec2(-1, -1);
 
     while (!glfwWindowShouldClose(window))
     {
@@ -305,6 +319,8 @@ int main(int, char**)
             }
         }
 
+        // histogram window
+
         if (show_histogram)
         {
             ImGui::Begin("Histogram", &show_histogram);
@@ -428,31 +444,77 @@ int main(int, char**)
             ImGui::SliderInt("s2", &s2, s1 + 1, 254);
             if (ImGui::Button("Choose"))
             {
-                {
-                    out_img = piecewiseLinearContrast(in_img, r1, s1, r2, s2);
-                    writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
-                    show_output_image = true;
-                    show_piecewise_dialog = false;
-                }
+                out_img = piecewiseLinearContrast(in_img, r1, s1, r2, s2);
+                writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                show_output_image = true;
+                show_piecewise_dialog = false;
             }
             ImGui::End();
         }
         if (show_em_dialog)
         {
-            ImGui::Begin("EM contrast", &show_piecewise_dialog);
-            ImGui::InputFloat("s1", &e);
-            ImGui::InputInt("r1", &m);
+            ImGui::Begin("EM contrast", &show_em_dialog);
+            ImGui::InputFloat("e", &e);
+            ImGui::SliderFloat("m", &m, 0, 255);
             if (ImGui::Button("Choose"))
             {
-                {
-                    out_img = emOperator(in_img, e, m);
-                    writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
-                    show_output_image = true;
-                    show_piecewise_dialog = false;
-                }
+                out_img = emOperator(in_img, e, m);
+                writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                show_output_image = true;
+                show_em_dialog = false;
             }
             ImGui::End();
         }
+        if (show_spline_dialog)
+        {
+            ImPlot::SetNextAxesLimits(0, 255, 0, 255, ImPlotCond_Always);
+            ImGui::Begin("Spline tool", &show_spline_dialog);
+            if (ImPlot::BeginPlot("Choose points"))
+            {
+                if (ImPlot::IsPlotHovered() && ImGui::IsMouseClicked(0) && splinePointsIndex < 6)
+                {
+                    ImPlotPoint mousePos = ImPlot::GetPlotMousePos();
+
+                    if (splinePointsIndex == 0 || mousePos.x > splinePointsX[splinePointsIndex - 1])
+                    {
+                        splinePointsX[splinePointsIndex] = (int)mousePos.x;
+                        splinePointsY[splinePointsIndex] = (int)mousePos.y;
+
+                        splinePointsIndex++;
+                    }
+                    if (splinePointsIndex == 6)
+                    {
+                        splinePointsX[6] = 255;
+                        splinePointsY[6] = 255;
+                    }
+
+                }
+
+                ImPlot::PlotScatter("Pinned Points", splinePointsX, splinePointsY, 7);
+                ImPlot::EndPlot();
+            }
+            if (ImGui::Button("Choose"))
+            {
+                out_img = splineOperator(in_img, splinePointsX, splinePointsY);
+                writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                show_output_image = true;
+                show_spline_dialog = false;
+
+                splinePointsX[0] = 0;
+                for (size_t i = 1; i < 6; i++)
+                    splinePointsX[i] = -1;
+                splinePointsY[0] = 0;
+                for (size_t i = 1; i < 6; i++)
+                    splinePointsY[i] = -1;
+
+                for (size_t i = 0; i < 256; i++)
+                    splineLine[i] = i;
+                splinePointsIndex = 1;
+            }
+            ImGui::End();
+        }
+
+        // thresholdings
 
         if (show_thresh_dialog)
         {
@@ -503,8 +565,6 @@ int main(int, char**)
                 {
                     in_img = out_img;
                     saveOutputAsInput(&input_image_texture, &input_image_width, &input_image_height, &input_image_channels, in_img);
-                    // input_ret = loadTextureFromFile(input_path, &input_image_texture, &input_image_width, &input_image_height);
-
                 }
                 ImGui::Image((void*)(intptr_t)output_image_texture, ImVec2(output_image_width * size_coefficient, output_image_height * size_coefficient));
             }

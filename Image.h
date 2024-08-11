@@ -109,7 +109,6 @@ public:
 	{
 		for (size_t y = 0; y < height; y++)
 		{
-			//Pixel* debuggy = this->data[y];
 			delete[] this->data[y];
 		}
 		delete[] this->data;
@@ -125,21 +124,10 @@ public:
 		this->channels = channels_;
 	}
 
-	//void print() 
-	//{
-	//	for (size_t y = 0; y < height; y++)
-	//	{
-	//		for (size_t x = 0; x < width; x++)
-	//		{
-	//			data[y][x].print();
-	//			printf(", ");
-	//		}
-	//	}
-	//}
-
 	void getTexture(unsigned char** textureData) const
 	{
-		//delete[] textureData;
+
+		// delete[] * textureData;
 
 		*textureData = new unsigned char[height * width * channels];
 

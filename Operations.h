@@ -264,6 +264,60 @@ Image piecewiseLinearContrast(Image input, int r1, int s1, int r2, int s2)
 	return output;
 }
 
+unsigned char* getEMLookUpTable(float e, int m)
+{
+	unsigned char* lut = new unsigned char[256];
+
+	float c = (255 - (255 * pow(255, e) / (pow(255, e) + pow(255, e)))) / 65025;
+
+	for (size_t pixelValue = 0; pixelValue < 256; pixelValue++)
+	{
+		float correspondingValue = 255 * (pow(pixelValue, e) / (pow(pixelValue, e) + pow(m, e)) + c * pixelValue);
+
+		lut[pixelValue] = pixelClamp(correspondingValue);
+	}
+
+	return lut;
+}
+Image emOperator(Image input, float e, int m)
+{
+	if (input.isNull())
+	{
+		Image img;
+		return img;
+	}
+	unsigned char* lut = getEMLookUpTable(e, m);
+	Image output = applyLookUpTable(input, lut);
+	delete[] lut;
+	return output;
+}
+
+unsigned char* getSplineLookUpTable(int* splinePointsX, int* splinePointsY)
+{
+	unsigned char* lut = new unsigned char[256];
+
+	for (size_t pixelValue = 0; pixelValue < 256; pixelValue++)
+	{
+		float correspondingValue = 0;
+
+		lut[pixelValue] = pixelClamp(correspondingValue);
+	}
+
+	return lut;
+}
+Image splineOperator(Image input, int* splinePointsX, int* splinePointsY)
+{
+	if (input.isNull())
+	{
+		Image img;
+		return img;
+	}
+	unsigned char* lut = getSplineLookUpTable(splinePointsX, splinePointsY);
+	Image output = applyLookUpTable(input, lut);
+	delete[] lut;
+	return output;
+}
+
 // thresholdings
 
 Image threshold(Image input, int thresh)
