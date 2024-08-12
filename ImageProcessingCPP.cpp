@@ -303,7 +303,7 @@ int main(int, char**)
                         {
                             show_spline_dialog = true;
                         }
-                        if (ImGui::MenuItem("Color contrast stretching"))
+                        if (ImGui::MenuItem("Histogram stretching"))
                         {
                             out_img = histogramStretchingOperator(in_img);
 
@@ -312,7 +312,10 @@ int main(int, char**)
                         }
                         if (ImGui::MenuItem("Histogram equalization"))
                         {
+                            out_img = histogramEqualizationOperator(in_img);
 
+                            writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                            show_output_image = true;
                         }
                         ImGui::EndMenu();
                     }

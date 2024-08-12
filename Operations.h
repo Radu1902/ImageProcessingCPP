@@ -6,9 +6,10 @@
 
 void getHistogram(Image img, int channel, unsigned int** histogram)
 {
-	if (*histogram != nullptr)
+	if (histogram != nullptr && *histogram != nullptr)
 	{
 		delete[] *histogram;
+		*histogram = nullptr;
 	}
 
 	*histogram = new unsigned int[256] ();
@@ -367,7 +368,7 @@ unsigned char* getStretchedLookUpTable(unsigned int* histogram)
 	unsigned char minPixel = 0;
 	unsigned char maxPixel = 255;
 
-	for (unsigned char pixel = 0; pixel < 256; pixel++)
+	for (size_t pixel = 0; pixel < 256; pixel++)
 	{
 		if (histogram[pixel] > 0)
 		{
@@ -375,7 +376,7 @@ unsigned char* getStretchedLookUpTable(unsigned int* histogram)
 			break;
 		}
 	}
-	for (unsigned char pixel = 255; pixel >= 0; pixel--)
+	for (size_t pixel = 255; pixel >= 0; pixel--)
 	{
 		if (histogram[pixel] > 0)
 		{
@@ -386,9 +387,9 @@ unsigned char* getStretchedLookUpTable(unsigned int* histogram)
 
 	for (size_t pixelValue = 0; pixelValue < 256; pixelValue++)
 	{
-		int correspondingValue = (int)(255.0f / (float)(maxPixel - minPixel)) * (float)(pixelValue - minPixel);
+		int correspondingValue = (int)((255.0f / (float)(maxPixel - minPixel)) * (float)(pixelValue - minPixel));
 
-		histogram[pixelValue] = pixelClamp(correspondingValue);
+		lut[pixelValue] = pixelClamp(correspondingValue);
 	}
 
 	return lut;
@@ -401,9 +402,41 @@ Image histogramStretchingOperator(Image input)
 		return img;
 	}
 	Image hsvInput = convert2HSV(input);
-	unsigned int* valueHistogram;
+	unsigned int* valueHistogram = nullptr;
 	getHistogram(hsvInput, 2, &valueHistogram);
 	unsigned char* lut = getStretchedLookUpTable(valueHistogram);
+	delete[] valueHistogram;
+	Image output = applyLookUpTable(input, lut);
+	delete[] lut;
+	return output;
+}
+
+unsigned char* getEqualizedLookUpTable(unsigned int* histogram, int pixelCount)
+{
+	unsigned char* lut = new unsigned char[256];
+
+	unsigned int cumulation = 0;
+	float normalizedCumulation = 0.0f;
+	for (size_t pixelValue = 0; pixelValue < 256; pixelValue++)
+	{
+		cumulation += histogram[pixelValue];
+		normalizedCumulation = (float)cumulation / (float)pixelCount * 255.0f;
+		lut[pixelValue] = (char)normalizedCumulation;
+	}
+
+	return lut;
+}
+Image histogramEqualizationOperator(Image input)
+{
+	if (input.isNull())
+	{
+		Image img;
+		return img;
+	}
+	Image hsvInput = convert2HSV(input);
+	unsigned int* valueHistogram = nullptr;
+	getHistogram(hsvInput, 2, &valueHistogram);
+	unsigned char* lut = getEqualizedLookUpTable(valueHistogram, input.getHeight() * input.getWidth());
 	delete[] valueHistogram;
 	Image output = applyLookUpTable(input, lut);
 	delete[] lut;
