@@ -464,7 +464,7 @@ Image colorThreshold(Image input, unsigned char minR, unsigned char minG, unsign
 	return threshed;
 }
 
-Image dualThreshold(Image input, unsigned char thresh1, unsigned char thresh2)
+Image doubleThreshold(Image input, unsigned char thresh1, unsigned char thresh2)
 {
 	if (input.isNull())
 	{
@@ -686,7 +686,7 @@ Image otsuThreshold(Image input)
 	optimalThreshold = optimalThresholdSum / (float)optimalThresholdCount;
 	return threshold(grayscale, (unsigned char)optimalThreshold);
 }
-Image otsuDualThreshold(Image input)
+Image otsuDoubleThreshold(Image input)
 {
 	if (input.isNull())
 	{
@@ -706,6 +706,10 @@ Image otsuDualThreshold(Image input)
 	int optimalThresholdCount = 0;
 	for (unsigned int possibleThresh = 0; possibleThresh < 255; possibleThresh++)
 	{
+		for (unsigned int secondPossibleThresh = 0; secondPossibleThresh < 255; secondPossibleThresh++)
+		{
+
+		}
 		double class1Probability = 0;
 		double class1Mean = 0;
 		for (size_t pixelValue = 0; pixelValue < possibleThresh + 1; pixelValue++)

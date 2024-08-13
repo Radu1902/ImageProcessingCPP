@@ -175,6 +175,10 @@ int main(int, char**)
     int thresh = 255;
     bool show_thresh_dialog = false;
 
+    int thresh1 = 128;
+    int thresh2 = 255;
+    bool show_double_thresh_dialog = false;
+
     float minColor[3] = { 0.0f, 0.0f, 0.0f };
     float maxColor[3] = { 0.0f, 0.0f, 0.0f };
     bool show_color_thresh_dialog = false;
@@ -666,6 +670,20 @@ int main(int, char**)
                 writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
                 show_output_image = true;
                 show_thresh_dialog = false;
+            }
+            ImGui::End();
+        }
+        if (show_double_thresh_dialog)
+        {
+            ImGui::Begin("Manual thresholding", &show_double_thresh_dialog);
+            ImGui::SliderInt("Choose first threshold", &thresh1, 0, thresh2 - 1);
+            ImGui::SliderInt("Choose second threshold", &thresh2, thresh1 + 1, 255);
+            if (ImGui::Button("Apply"))
+            {
+                out_img = doubleThreshold(in_img, thresh1, thresh2);
+                writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                show_output_image = true;
+                show_double_thresh_dialog = false;
             }
             ImGui::End();
         }
