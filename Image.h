@@ -70,8 +70,6 @@ public:
 		if (image_data == NULL)
 			return false;
 
-
-		
 		setImageMatrix(image_data, image_width, image_height, image_channels);
 
 		stbi_image_free(image_data);
@@ -165,6 +163,25 @@ public:
 		}
 
 		return maxVal;
+	}
+	unsigned char getMinPixel() const
+	{
+		unsigned char minVal = 255;
+
+		for (size_t y = 0; y < height; y++)
+		{
+			for (size_t x = 0; x < width; x++)
+			{
+				Pixel grayPixel(data[y][x]);
+				grayPixel.cvtGrayscale();
+				if (grayPixel.getValue(0) < minVal)
+				{
+					minVal = grayPixel.getValue(0);
+				}
+			}
+		}
+
+		return minVal;
 	}
 	PixelType getType() const
 	{

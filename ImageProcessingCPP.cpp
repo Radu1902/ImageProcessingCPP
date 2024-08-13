@@ -58,9 +58,6 @@ void saveOutputAsInput(GLuint* output_image_texture, int* output_image_width, in
     writeTextureToFile("output/outputInput.bmp", *output_image_width, *output_image_height, *output_image_channels, out_texture);
     bool output_ret = loadTextureFromFile("output/outputInput.bmp", output_image_texture, output_image_width, output_image_height);
     IM_ASSERT(output_ret);
-
-
-
 }
 
 int main(int, char**)
@@ -87,8 +84,12 @@ int main(int, char**)
 
     ImGui_ImplOpenGL3_Init(glsl_version);
 
+    static ImU32 colorDataGray[1] = { 0xAAAAAAAA };
     static ImU32 colorDataRGB[3] = { 0xFF0000FF, 0xFF00FF00, 0xFFFF0000 };
-    int customRGBMap = ImPlot::AddColormap("RGBColors", colorDataRGB, 32);
+    static ImU32 colorDataHSV[3] = { 0xFF00FFFF, 0xFFFFFF00, 0xFFFF00FF };
+    int GrayMap = ImPlot::AddColormap("GrayColor", colorDataGray, 32);
+    int RGBMap = ImPlot::AddColormap("RGBColors", colorDataRGB, 32);
+    int HSVMap = ImPlot::AddColormap("HSVColors", colorDataHSV, 32);
 
     bool show_demo_window = true;
 
@@ -123,10 +124,14 @@ int main(int, char**)
 
     // histogram
 
-    unsigned int* chan1Histogram = nullptr;
-    unsigned int* chan2Histogram = nullptr;
-    unsigned int* chan3Histogram = nullptr;
-    bool show_histogram = false;
+    unsigned int inChan1Histogram[256] = { 0 };
+    unsigned int inChan2Histogram[256] = { 0 };
+    unsigned int inChan3Histogram[256] = { 0 };
+    unsigned int outChan1Histogram[256] = { 0 };
+    unsigned int outChan2Histogram[256] = { 0 };
+    unsigned int outChan3Histogram[256] = { 0 };
+    bool show_in_histogram = false;
+    bool show_out_histogram = false;
 
     // Pointwise ops
 
@@ -170,7 +175,12 @@ int main(int, char**)
     int thresh = 255;
     bool show_thresh_dialog = false;
 
-    static ImVec2 pinned = ImVec2(-1, -1);
+    float minColor[3] = { 0.0f, 0.0f, 0.0f };
+    float maxColor[3] = { 0.0f, 0.0f, 0.0f };
+    bool show_color_thresh_dialog = false;
+
+    float backgroundPercentage = 1.0f;
+    bool show_quantile_dialog = false;
 
     while (!glfwWindowShouldClose(window))
     {
@@ -224,44 +234,43 @@ int main(int, char**)
                             writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
                             show_output_image = true;
                         }
+                        if (ImGui::MenuItem("Invert"))
+                        {
+                            out_img = invert(in_img);
+
+                            writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                            show_output_image = true;
+                        }
                         if (show_input_image) // if show_input_image is true, it means in_img is not null
                         {
                             if (ImGui::MenuItem("Show input image histogram"))
                             {
-                                getHistogram(in_img, 0, &chan1Histogram);
+                                memset(inChan1Histogram, 0, sizeof(inChan1Histogram));
+                                memset(inChan2Histogram, 0, sizeof(inChan2Histogram));
+                                memset(inChan3Histogram, 0, sizeof(inChan3Histogram));
+                                getHistogram(in_img, 0, inChan1Histogram);
                                 if (in_img.getType() != PixelType::GRAY)
                                 {
-                                    getHistogram(in_img, 1, &chan2Histogram);
-                                    getHistogram(in_img, 2, &chan3Histogram);
+                                    getHistogram(in_img, 1, inChan2Histogram);
+                                    getHistogram(in_img, 2, inChan3Histogram);
                                 }
-                                else // if img isn't rgb, free the other histograms so that they don't remain loaded with data from previous images
-                                {
-                                    delete[] chan2Histogram;
-                                    delete[] chan3Histogram;
-                                    chan2Histogram = nullptr;
-                                    chan3Histogram = nullptr;
-                                }
-                                show_histogram = true;
+                                show_in_histogram = true;
                             }
                         }
                         if (show_output_image) // it means out_img is not null
                         {
                             if (ImGui::MenuItem("Show output image histogram"))
                             {
-                                getHistogram(out_img, 0, &chan1Histogram);
+                                memset(outChan1Histogram, 0, sizeof(outChan1Histogram));
+                                memset(outChan2Histogram, 0, sizeof(outChan2Histogram));
+                                memset(outChan3Histogram, 0, sizeof(outChan3Histogram));
+                                getHistogram(out_img, 0, outChan1Histogram);
                                 if (out_img.getType() != PixelType::GRAY)
                                 {
-                                    getHistogram(out_img, 1, &chan2Histogram);
-                                    getHistogram(out_img, 2, &chan3Histogram);
+                                    getHistogram(out_img, 1, outChan2Histogram);
+                                    getHistogram(out_img, 2, outChan3Histogram);
                                 }
-                                else
-                                {
-                                    delete[] chan2Histogram;
-                                    delete[] chan3Histogram;
-                                    chan2Histogram = nullptr;
-                                    chan3Histogram = nullptr;
-                                }
-                                show_histogram = true;
+                                show_out_histogram = true;
                             }
                         }
                         ImGui::EndMenu();
@@ -326,6 +335,47 @@ int main(int, char**)
                         {
                             show_thresh_dialog = true;
                         }
+                        if (ImGui::MenuItem("Manual double thresholding"))
+                        {
+                            show_double_thresh_dialog = true;
+                        }
+                        if (ImGui::MenuItem("Manual color thresholding"))
+                        {
+                            show_color_thresh_dialog = true;
+                        }
+                        if (ImGui::MenuItem("Mid range thresholding"))
+                        {
+                            out_img = midRangeThreshold(in_img);
+
+                            writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                            show_output_image = true;
+                        }
+                        if (ImGui::MenuItem("Mean thresholding"))
+                        {
+                            out_img = meanThreshold(in_img);
+
+                            writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                            show_output_image = true;
+                        }
+                        if (ImGui::MenuItem("Quantile thresholding"))
+                        {
+                            show_quantile_dialog = true;
+                        }
+                        if (ImGui::MenuItem("Intermeans (ISODATA) thresholding"))
+                        {
+                            out_img = intermeansThreshold(in_img);
+
+                            writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                            show_output_image = true;
+                        }
+                        if (ImGui::MenuItem("Otsu thresholding"))
+                        {
+                            out_img = otsuThreshold(in_img);
+
+                            writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                            show_output_image = true;
+                        }
+
                         ImGui::EndMenu();
                     }
                     if (ImGui::BeginMenu("Filters"))
@@ -339,34 +389,106 @@ int main(int, char**)
 
         // histogram window
 
-        if (show_histogram)
+        if (show_in_histogram)
         {
-            ImGui::Begin("Histogram", &show_histogram);
+            ImGui::Begin("Input histogram", &show_in_histogram);
 
-            if (chan1Histogram != nullptr && chan2Histogram != nullptr && chan3Histogram != nullptr)
+            switch (in_img.getType())
             {
-                ImPlot::PushColormap(customRGBMap);
-                if (ImPlot::BeginPlot("Multiple channel histogram"))
+            case PixelType::GRAY:
+                ImPlot::PushColormap(GrayMap);
+                if (ImPlot::BeginPlot("Histogram"))
                 {
-                    ImPlot::PlotBars("Channel 1", chan1Histogram, 256);
-                    ImPlot::PlotBars("Channel 2", chan2Histogram, 256);
-                    ImPlot::PlotBars("Channel 3", chan3Histogram, 256);
+                    ImPlot::PlotBars("Pixel values", inChan1Histogram, 256);
                     ImPlot::EndPlot();
                     ImPlot::PopColormap();
                 }
-            }
-            else
-            {
-                if (chan1Histogram != nullptr)
+                break;
+            case PixelType::RGB:
+                ImPlot::PushColormap(RGBMap);
+                if (ImPlot::BeginPlot("RGB histogram"))
                 {
-                    if (ImPlot::BeginPlot("Histogram"))
-                    {
-                        ImPlot::PlotBars("Pixel values", chan1Histogram, 256);
-                        ImPlot::EndPlot();
-                    }
+                    ImPlot::PlotBars("Red channel values", inChan1Histogram, 256);
+                    ImPlot::PlotBars("Green channel values", inChan2Histogram, 256);
+                    ImPlot::PlotBars("Blue channel values", inChan3Histogram, 256);
+                    ImPlot::EndPlot();
+                    ImPlot::PopColormap();
                 }
+                break;
+            case PixelType::HSV:
+                ImPlot::PushColormap(HSVMap);
+                if (ImPlot::BeginPlot("HSV histogram"))
+                {
+                    ImPlot::PlotBars("Hue", inChan1Histogram, 256);
+                    ImPlot::PlotBars("Saturation", inChan2Histogram, 256);
+                    ImPlot::PlotBars("Value", inChan3Histogram, 256);
+                    ImPlot::EndPlot();
+                    ImPlot::PopColormap();
+                }
+                break;
+            default:
+                ImPlot::PushColormap(RGBMap);
+                if (ImPlot::BeginPlot("Multiple channel histogram"))
+                {
+                    ImPlot::PlotBars("Red channel values", inChan1Histogram, 256);
+                    ImPlot::PlotBars("Green channel values", inChan2Histogram, 256);
+                    ImPlot::PlotBars("Blue channel values", inChan3Histogram, 256);
+                    ImPlot::EndPlot();
+                    ImPlot::PopColormap();
+                }
+                break;
             }
+            ImGui::End();
+        }
+        if (show_out_histogram)
+        {
+            ImGui::Begin("Output histogram", &show_out_histogram);
 
+            switch (out_img.getType())
+            {
+            case PixelType::GRAY:
+                ImPlot::PushColormap(GrayMap);
+                if (ImPlot::BeginPlot("Histogram"))
+                {
+                    ImPlot::PlotBars("Pixel values", outChan1Histogram, 256);
+                    ImPlot::EndPlot();
+                    ImPlot::PopColormap();
+                }
+                break;
+            case PixelType::RGB:
+                ImPlot::PushColormap(RGBMap);
+                if (ImPlot::BeginPlot("RGB histogram"))
+                {
+                    ImPlot::PlotBars("Red channel values", outChan1Histogram, 256);
+                    ImPlot::PlotBars("Green channel values", outChan2Histogram, 256);
+                    ImPlot::PlotBars("Blue channel values", outChan3Histogram, 256);
+                    ImPlot::EndPlot();
+                    ImPlot::PopColormap();
+                }
+                break;
+            case PixelType::HSV:
+                ImPlot::PushColormap(HSVMap);
+                if (ImPlot::BeginPlot("HSV histogram"))
+                {
+                    ImPlot::PlotBars("Hue", outChan1Histogram, 256);
+                    ImPlot::PlotBars("Saturation", outChan2Histogram, 256);
+                    ImPlot::PlotBars("Value", outChan3Histogram, 256);
+                    ImPlot::EndPlot();
+                    ImPlot::PopColormap();
+                }
+                break;
+            default:
+                ImPlot::PushColormap(RGBMap);
+                if (ImPlot::BeginPlot("Multiple channel histogram"))
+                {
+                    ImPlot::PlotBars("Red channel values", outChan1Histogram, 256);
+                    ImPlot::PlotBars("Green channel values", outChan2Histogram, 256);
+                    ImPlot::PlotBars("Blue channel values", outChan3Histogram, 256);
+                    ImPlot::EndPlot();
+                    ImPlot::PopColormap();
+                }
+                break;
+            }
             ImGui::End();
         }
 
@@ -538,7 +660,7 @@ int main(int, char**)
         {
             ImGui::Begin("Manual thresholding", &show_thresh_dialog);
             ImGui::SliderInt("Choose Threshold", &thresh, 0, 255);
-            if (ImGui::Button("Choose"))
+            if (ImGui::Button("Apply"))
             {
                 out_img = threshold(in_img, thresh);
                 writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
@@ -547,7 +669,33 @@ int main(int, char**)
             }
             ImGui::End();
         }
-
+        if (show_color_thresh_dialog)
+        {
+            ImGui::Begin("Manual thresholding", &show_color_thresh_dialog);
+            ImGui::ColorEdit3("Min color", minColor);
+            ImGui::ColorEdit3("Max color", maxColor);
+            if (ImGui::Button("Apply"))
+            {
+                out_img = colorThreshold(in_img, (char)(minColor[0] * 255), (char)(minColor[1] * 255), (char)(minColor[2] * 255), (char)(maxColor[0] * 255), (char)(maxColor[1] * 255), (char)(maxColor[2] * 255));
+                writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                show_output_image = true;
+                show_color_thresh_dialog = false;
+            }
+            ImGui::End();
+        }
+        if (show_quantile_dialog)
+        {
+            ImGui::Begin("Quantile Thresholding", &show_quantile_dialog);
+            ImGui::SliderFloat("Choose background percentage", &backgroundPercentage, 0, 1);
+            if (ImGui::Button("Apply"))
+            {
+                out_img = quantileThreshold(in_img, backgroundPercentage);
+                writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                show_output_image = true;
+                show_quantile_dialog = false;
+            }
+            ImGui::End();
+        }
 
         {
             ImGui::Begin("Input Image");
