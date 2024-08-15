@@ -379,6 +379,34 @@ int main(int, char**)
                             writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
                             show_output_image = true;
                         }
+                        if (ImGui::MenuItem("Minimum error thresholding"))
+                        {
+                            out_img = minErrorThreshold(in_img);
+
+                            writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                            show_output_image = true;
+                        }
+                        if (ImGui::MenuItem("Otsu two classes thresholding"))
+                        {
+                            out_img = otsuDoubleThreshold(in_img);
+
+                            writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                            show_output_image = true;
+                        }
+                        if (ImGui::MenuItem("Maximum entropy thresholding"))
+                        {
+                            out_img = maxEntropyThresholding(in_img);
+
+                            writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                            show_output_image = true;
+                        }
+                        if (ImGui::MenuItem("Triangle method thresholding"))
+                        {
+                            out_img = triangleThresholding(in_img);
+
+                            writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                            show_output_image = true;
+                        }
 
                         ImGui::EndMenu();
                     }

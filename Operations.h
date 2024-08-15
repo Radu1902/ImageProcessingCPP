@@ -344,7 +344,7 @@ Image emOperator(Image input, float e, int m)
 
 void getSplineLookUpTable(unsigned char lut[256], int* splinePointsX, int* splinePointsY)
 {
-
+	// out of order
 	for (size_t pixelValue = 0; pixelValue < 256; pixelValue++)
 	{
 		float correspondingValue = 0;
@@ -354,6 +354,7 @@ void getSplineLookUpTable(unsigned char lut[256], int* splinePointsX, int* splin
 }
 Image splineOperator(Image input, int* splinePointsX, int* splinePointsY)
 {
+	// out of order
 	if (input.isNull())
 	{
 		Image img;
@@ -643,29 +644,15 @@ Image otsuThreshold(Image input)
 			class1Mean += pixelValue * pixelProbability;
 		}
 		class1Mean /= class1Probability;
-		double class1Variance = 0;
-		for (size_t pixelValue = 0; pixelValue < possibleThresh + 1; pixelValue++)
-		{
-			class1Variance += pow((pixelValue - class1Mean), 2) * histogram[pixelValue] / (double)pixelCount;
-		}
-		class1Variance /= class1Probability;
 
-
-		double class2Probability = 0;
+		double class2Probability = 1 - class1Probability;
 		double class2Mean = 0;
 		for (size_t pixelValue = possibleThresh + 1; pixelValue < 256; pixelValue++)
 		{
 			double pixelProbability = histogram[pixelValue] / (double)pixelCount;
-			class2Probability += pixelProbability;
 			class2Mean += pixelValue * pixelProbability;
 		}
 		class2Mean /= class2Probability;
-		double class2Variance = 0;
-		for (size_t pixelValue = possibleThresh + 1; pixelValue < 256; pixelValue++)
-		{
-			class2Variance += pow((pixelValue - class2Mean), 2) * histogram[pixelValue] / (double)pixelCount;
-		}
-		class2Variance /= class2Probability;
 
 		double mean = 1.0f / (double)pixelCount;
 		double betweenClassVariance = class1Probability * pow((class1Mean - mean), 2) + class2Probability * pow((class2Mean - mean), 2);
@@ -686,6 +673,69 @@ Image otsuThreshold(Image input)
 	optimalThreshold = optimalThresholdSum / (float)optimalThresholdCount;
 	return threshold(grayscale, (unsigned char)optimalThreshold);
 }
+
+Image minErrorThreshold(Image input)
+{
+	if (input.isNull())
+	{
+		Image img;
+		return img;
+	}
+	Image grayscale = convert2Gray(input);
+
+	unsigned int histogram[256] = { 0 };
+	getHistogram(grayscale, 0, histogram);
+
+	unsigned int pixelCount = input.getHeight() * input.getWidth();
+	unsigned int minThreshold = 0;
+	double minError = DBL_MAX;
+
+	for (unsigned int possibleThresh = 0; possibleThresh < 255; possibleThresh++)
+	{
+		double class1Probability = 0;
+		double class1Mean = 0;
+		for (size_t pixelValue = 0; pixelValue < possibleThresh + 1; pixelValue++)
+		{
+			double pixelProbability = histogram[pixelValue] / (double)pixelCount;
+			class1Probability += pixelProbability;
+			class1Mean += pixelValue * pixelProbability;
+		}
+		class1Mean /= class1Probability;
+		double class1Variance = 0;
+		for (size_t pixelValue = 0; pixelValue < possibleThresh + 1; pixelValue++)
+		{
+			double pixelProbability = (double)histogram[pixelValue] / (double)pixelCount;
+			class1Variance += pow((pixelValue - class1Mean), 2) * pixelProbability;
+		}
+		class1Variance /= class1Probability;
+
+		double class2Probability = 1.0 - class1Probability;
+		double class2Mean = 0;
+		for (size_t pixelValue = possibleThresh + 1; pixelValue < 256; pixelValue++)
+		{
+			double pixelProbability = histogram[pixelValue] / (double)pixelCount;
+			class2Mean += pixelValue * pixelProbability;
+		}
+		class2Mean /= class2Probability;
+		double class2Variance = 0;
+		for (size_t pixelValue = possibleThresh + 1; pixelValue < 256; pixelValue++)
+		{
+			double pixelProbability = (double)histogram[pixelValue] / (double)pixelCount;
+			class2Variance += pow((pixelValue - class2Mean), 2) * pixelProbability;
+		}
+		class2Variance /= class2Probability;
+
+		double err = 1.0 + class1Probability * log(class1Variance) + class2Probability * log(class2Variance) - 2 * class1Probability * log(class1Probability) - 2 * class2Probability * log(class2Probability);
+		
+		if (err < minError && err >= 0)
+		{
+			minError = err;
+			minThreshold = possibleThresh;
+		}
+	}
+	return threshold(grayscale, (unsigned char)minThreshold);
+}
+
 Image otsuDoubleThreshold(Image input)
 {
 	if (input.isNull())
@@ -699,68 +749,237 @@ Image otsuDoubleThreshold(Image input)
 	getHistogram(grayscale, 0, histogram);
 
 	unsigned int pixelCount = input.getHeight() * input.getWidth();
-	unsigned int optimalThreshold = 0;
+	unsigned int optimalLow = 0;
+	unsigned int optimalHigh = 1;
 
 	double maxVariance = 0;
-	double optimalThresholdSum = 0;
+	double optimalHighSum = 0;
+	double optimalLowSum = 0;
 	int optimalThresholdCount = 0;
-	for (unsigned int possibleThresh = 0; possibleThresh < 255; possibleThresh++)
+	for (unsigned int possibleLow = 0; possibleLow < 254; possibleLow++)
 	{
-		for (unsigned int secondPossibleThresh = 0; secondPossibleThresh < 255; secondPossibleThresh++)
+		for (unsigned int possibleHigh = possibleLow + 1; possibleHigh < 255; possibleHigh++)
 		{
+			// class 1
 
-		}
-		double class1Probability = 0;
-		double class1Mean = 0;
-		for (size_t pixelValue = 0; pixelValue < possibleThresh + 1; pixelValue++)
-		{
-			double pixelProbability = histogram[pixelValue] / (double)pixelCount;
-			class1Probability += pixelProbability;
-			class1Mean += pixelValue * pixelProbability;
-		}
-		class1Mean /= class1Probability;
-		double class1Variance = 0;
-		for (size_t pixelValue = 0; pixelValue < possibleThresh + 1; pixelValue++)
-		{
-			class1Variance += pow((pixelValue - class1Mean), 2) * histogram[pixelValue] / (double)pixelCount;
-		}
-		class1Variance /= class1Probability;
+			double class1Probability = 0;
+			double class1Mean = 0;
+			for (size_t pixelValue = 0; pixelValue < possibleLow + 1; pixelValue++)
+			{
+				double pixelProbability = histogram[pixelValue] / (double)pixelCount;
+				class1Probability += pixelProbability;
+				class1Mean += pixelValue * pixelProbability;
+			}
+			class1Mean /= class1Probability;
 
+			// class 2
 
-		double class2Probability = 0;
-		double class2Mean = 0;
-		for (size_t pixelValue = possibleThresh + 1; pixelValue < 256; pixelValue++)
-		{
-			double pixelProbability = histogram[pixelValue] / (double)pixelCount;
-			class2Probability += pixelProbability;
-			class2Mean += pixelValue * pixelProbability;
-		}
-		class2Mean /= class2Probability;
-		double class2Variance = 0;
-		for (size_t pixelValue = possibleThresh + 1; pixelValue < 256; pixelValue++)
-		{
-			class2Variance += pow((pixelValue - class2Mean), 2) * histogram[pixelValue] / (double)pixelCount;
-		}
-		class2Variance /= class2Probability;
+			double class2Probability = 0;
+			double class2Mean = 0;
+			for (size_t pixelValue = possibleLow + 1; pixelValue < possibleHigh; pixelValue++)
+			{
+				double pixelProbability = histogram[pixelValue] / (double)pixelCount;
+				class2Probability += pixelProbability;
+				class2Mean += pixelValue * pixelProbability;
+			}
+			class2Mean /= class2Probability;
 
-		double mean = 1.0f / (double)pixelCount;
-		double betweenClassVariance = class1Probability * pow((class1Mean - mean), 2) + class2Probability * pow((class2Mean - mean), 2);
+			// class 3
 
-		if (betweenClassVariance > maxVariance)
-		{
-			maxVariance = betweenClassVariance;
-			optimalThreshold = possibleThresh;
-			optimalThresholdSum = possibleThresh;
-			optimalThresholdCount = 1;
-		}
-		if (betweenClassVariance == maxVariance)
-		{
-			optimalThresholdSum += possibleThresh;
-			optimalThresholdCount++;
+			double class3Probability = 0;
+			double class3Mean = 0;
+			for (size_t pixelValue = possibleHigh + 1; pixelValue < 256; pixelValue++)
+			{
+				double pixelProbability = histogram[pixelValue] / (double)pixelCount;
+				class3Probability += pixelProbability;
+				class3Mean += pixelValue * pixelProbability;
+			}
+			class3Mean /= class3Probability;
+
+			double mean = 1.0f / (double)pixelCount;
+			double betweenClassVariance = class1Probability * pow((class1Mean - mean), 2) + class2Probability * pow((class2Mean - mean), 2) + class3Probability * pow((class3Mean - mean), 2);
+
+			if (betweenClassVariance > maxVariance)
+			{
+				maxVariance = betweenClassVariance;
+				optimalLow = possibleLow;
+				optimalHigh = possibleHigh;
+				optimalLowSum = possibleLow;
+				optimalHighSum = possibleHigh;
+				optimalThresholdCount = 1;
+			}
+			if (betweenClassVariance == maxVariance)
+			{
+				optimalLowSum += possibleLow;
+				optimalHighSum += possibleHigh;
+				optimalThresholdCount++;
+			}
 		}
 	}
-	optimalThreshold = optimalThresholdSum / (float)optimalThresholdCount;
-	return threshold(grayscale, (unsigned char)optimalThreshold);
+	optimalLow = optimalLowSum / (float)optimalThresholdCount;
+	optimalHigh = optimalHighSum / (float)optimalThresholdCount;
+	return doubleThreshold(grayscale, (unsigned char)optimalLow, (unsigned char)optimalHigh);
+}
+
+
+void getSummationTerms(unsigned int histogram[256], unsigned int pixelCount, double summationTerm1[256], double summationTerm2[256])
+{
+	// assumes elements summationTerm0 and summationTerm1 are all initialized to 0
+
+	double termValue = 0;
+	for (unsigned int pixelValue = 0; pixelValue < 256; pixelValue++)
+	{
+		double pixelProbability = histogram[pixelValue] / pixelCount;
+		if (pixelProbability > 0)
+		{
+			termValue += pixelProbability * log(pixelProbability);
+		}
+		summationTerm1[pixelValue] = termValue;
+	}
+
+	termValue = 0;
+	for (int pixelValue = 255; pixelValue >= 0; pixelValue--)
+	{
+		double pixelProbability = histogram[pixelValue] / pixelCount;
+		summationTerm2[pixelValue] = termValue;
+		if (pixelProbability > 0)
+		{
+			termValue += pixelProbability * log(pixelProbability);
+		}
+	}
+}
+Image maxEntropyThresholding(Image input)
+{
+	if (input.isNull())
+	{
+		Image img;
+		return img;
+	}
+	Image grayscale = convert2Gray(input);
+
+	unsigned int histogram[256] = { 0 };
+	getHistogram(grayscale, 0, histogram);
+
+	unsigned int pixelCount = input.getHeight() * input.getWidth();
+	double summationTerm1[256] = { 0 };
+	double summationTerm2[256] = { 0 };
+	getSummationTerms(histogram, pixelCount, summationTerm1, summationTerm2);
+
+	unsigned int maxThresh = 0;
+	double maxEntropy = -999999.0;
+
+	for (unsigned int possibleThresh = 0; possibleThresh < 255; possibleThresh++)
+	{
+		double class1Probability = 0;
+		for (size_t pixelValue = 0; pixelValue < possibleThresh + 1; pixelValue++)
+			class1Probability += histogram[pixelValue] / (double)pixelCount;
+
+		double class2Probability = 1.0 - class1Probability;
+
+		double backgroundEntropy = 0;
+		double foregroundEntropy = 0;
+		if (class1Probability > 0)
+			backgroundEntropy = -1.0 / class1Probability * summationTerm1[possibleThresh] + log(class1Probability);
+
+		if (class2Probability > 0)
+			foregroundEntropy = -1.0 / class2Probability * summationTerm2[possibleThresh] + log(class2Probability);
+
+		double entropy = backgroundEntropy + foregroundEntropy;
+
+		if (entropy > maxEntropy && entropy < 0.0)
+		{
+			maxEntropy = entropy;
+			maxThresh = possibleThresh;
+		}
+	}
+	return threshold(grayscale, (unsigned char)maxThresh);
+}
+
+Image triangleThresholding(Image input)
+{
+	if (input.isNull())
+	{
+		Image img;
+		return img;
+	}
+	Image grayscale = convert2Gray(input);
+
+	unsigned int histogram[256] = { 0 };
+	getHistogram(grayscale, 0, histogram);
+
+	unsigned char peak = 0; // most common pixel value is called "peak" (as in the peak of the histogram)
+	unsigned int peakValue = 0;
+	for (unsigned int pixelValue = 0; pixelValue < 256; pixelValue++)
+	{
+		if (histogram[pixelValue] > peakValue)
+		{
+			peakValue = histogram[pixelValue];
+			peak = pixelValue;
+		}
+	}
+
+	unsigned char tail = 0; // least common pixel value, and if there are more pixel values with the same count, the farthest one away from the peak
+	unsigned long tailValue = 999999999;
+	if (peak < 128)
+	{
+		for (unsigned int pixelValue = peak; pixelValue < 256; pixelValue++)
+		{
+			if (histogram[pixelValue] <= tailValue)
+			{
+				tail = pixelValue;
+				tailValue = histogram[pixelValue];
+			}
+		}
+	}
+	else
+	{
+		for (int pixelValue = peak; pixelValue >= 0; pixelValue--)
+		{
+			if (histogram[pixelValue] <= tailValue)
+			{
+				tail = pixelValue;
+				tailValue = histogram[pixelValue];
+			}
+		}
+	}
+
+	// m = (y1 - y2) / (x1 - x2)
+
+	double slope = (double)(histogram[peak] - histogram[tail]) / (double)(peak - tail);
+
+	// y = m * x + k <=> k = y - m * x
+
+	double yIntercept = (double)histogram[peak] - slope * (double)peak;
+
+	double maxDistance = -99999.0;
+	unsigned int optimalThresh = 0;
+
+	if (peak > tail)
+	{
+		for (int pixelValue = tail; pixelValue < peak; pixelValue++)
+		{
+			double distance = abs(yIntercept + slope * pixelValue - histogram[pixelValue]) / sqrt(1 + pow(slope, 2));
+			
+			if (distance > maxDistance)
+			{
+				maxDistance = distance;
+				optimalThresh = pixelValue;
+			}
+		}
+	}
+	else
+	{
+		for (int pixelValue = peak; pixelValue < tail; pixelValue++)
+		{
+			double distance = abs(yIntercept + slope * pixelValue - histogram[pixelValue]) / sqrt(1 + pow(slope, 2));
+			if (distance > maxDistance)
+			{
+				maxDistance = distance;
+				optimalThresh = pixelValue;
+			}
+		}
+	}
+	return threshold(grayscale, (unsigned char)optimalThresh);
 }
 
 // filters
