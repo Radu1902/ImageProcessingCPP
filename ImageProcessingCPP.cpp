@@ -115,7 +115,7 @@ int main(int, char**)
     int output_image_height = 0;
     GLuint output_image_texture = 0;
     bool output_ret = false;
-    int output_image_channels = 0;
+    int output_image_channels = 3;
 
     Image in_img;
     Image out_img;
@@ -186,6 +186,9 @@ int main(int, char**)
     float backgroundPercentage = 1.0f;
     bool show_quantile_dialog = false;
 
+    int ksize = 1;
+    bool show_bernsen_dialog = false;
+
     while (!glfwWindowShouldClose(window))
     {
         glfwPollEvents();
@@ -205,13 +208,7 @@ int main(int, char**)
         {
             if (ImGui::BeginMainMenuBar())
             {
-                if (ImGui::BeginMenu("Main menu"))
-                {
-                    ImGui::MenuItem("Choose file", NULL, &show_path_selector);
-
-
-                    ImGui::EndMenu();
-                }
+                
 
                 if (show_imgproc_operations)
                 {
@@ -406,6 +403,10 @@ int main(int, char**)
 
                             writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
                             show_output_image = true;
+                        }
+                        if (ImGui::MenuItem("Bernsen adaptive thresholding"))
+                        {
+                            show_bernsen_dialog = true;
                         }
 
                         ImGui::EndMenu();
@@ -742,15 +743,64 @@ int main(int, char**)
             }
             ImGui::End();
         }
-
+        if (show_bernsen_dialog)
         {
-            ImGui::Begin("Input Image");
-            ImGui::Text("pointer = %x", input_image_texture);
-            ImGui::Text("size = %d x %d", input_image_width, input_image_height);
+            ImGui::Begin("Bernsen adaptive thresholding", &show_bernsen_dialog);
+            ImGui::InputInt("Choose mask sizes", &ksize, 2);
+            //ImGui::SliderInt("Choose mask size", &ksize, 1, 999);
+            if (ImGui::Button("Apply") && ksize % 2 == 1 && ksize > 0 && ksize < 999)
+            {
+                out_img = bernsenThresholding(in_img, ksize);
+                writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                show_output_image = true;
+                show_bernsen_dialog = false;
+            }
+            ImGui::End();
+        }
+
+        // Image display
+
+        if (input_path != nullptr)
+        {
+            ImGui::Text("file path: %s", input_path);
+            if (ImGui::Button("Load image"))
+            {
+                input_ret = loadTextureFromFile(input_path, &input_image_texture, &input_image_width, &input_image_height);
+                in_img.loadImage(input_path, 3);
+
+                IM_ASSERT(input_ret);
+                show_input_image = true;
+                show_imgproc_operations = true;
+            }
+        }
+        //if (input_path != nullptr && show_input_image == false)
+        //{
+        //    input_ret = loadTextureFromFile(input_path, &input_image_texture, &input_image_width, &input_image_height);
+        //    in_img.loadImage(input_path, 3);
+
+        //    IM_ASSERT(input_ret);
+        //    show_input_image = true;
+        //    show_imgproc_operations = true;
+        //}
+
+        ImGuiIO io = ImGui::GetIO();
+        {
+            ImGui::SetNextWindowPos(ImVec2(0.0f, 18.0f), ImGuiCond_Always);
+            ImGui::SetNextWindowSize(ImVec2(io.DisplaySize.x, 82.0f), ImGuiCond_Always);
+            ImGuiWindowFlags window_flags = 0;
+            window_flags |= ImGuiWindowFlags_NoTitleBar;
+            window_flags |= ImGuiWindowFlags_NoResize;
+            window_flags |= ImGuiWindowFlags_NoCollapse;
+            window_flags |= ImGuiWindowFlags_NoMove;
+
+            ImGui::Begin("Menu", nullptr, window_flags);
             ImGui::SliderFloat("resize  (VISUAL ONLY)", &size_coefficient, 0.1f, 10.0f);
+            if (ImGui::Button("Choose file"))
+            {
+                show_path_selector = true;
+            }
             if (input_path != nullptr)
             {
-                ImGui::Text("file path: %s", input_path);
                 if (ImGui::Button("Load image"))
                 {
                     input_ret = loadTextureFromFile(input_path, &input_image_texture, &input_image_width, &input_image_height);
@@ -760,7 +810,31 @@ int main(int, char**)
                     show_input_image = true;
                     show_imgproc_operations = true;
                 }
+                ImGui::SameLine();
+                ImGui::Text("file path: %s", input_path);
             }
+            if (show_output_image)
+            {
+                ImGui::SameLine(io.DisplaySize.x - 240.0f);
+                if (ImGui::Button("Save output image as input image"))
+                {
+                    in_img = out_img;
+                    saveOutputAsInput(&input_image_texture, &input_image_width, &input_image_height, &input_image_channels, in_img);
+                }
+            }
+            ImGui::End();
+        }
+        {
+            ImGui::SetNextWindowPos(ImVec2(0.0f, 100.0f), ImGuiCond_Always);
+            ImGui::SetNextWindowSize(ImVec2(io.DisplaySize.x / 2.0f, io.DisplaySize.y - 100.0f), ImGuiCond_Always);
+            ImGuiWindowFlags window_flags = 0;
+            window_flags |= ImGuiWindowFlags_NoTitleBar;
+            window_flags |= ImGuiWindowFlags_NoResize;
+            window_flags |= ImGuiWindowFlags_NoCollapse;
+            window_flags |= ImGuiWindowFlags_NoMove;
+            ImGui::Begin("Input Image", nullptr, window_flags);
+            ImGui::Text("size = %d x %d", input_image_width, input_image_height);
+
             if (show_input_image)
             {
                 ImGui::Image((void*)(intptr_t)input_image_texture, ImVec2(input_image_width * size_coefficient, input_image_height * size_coefficient));
@@ -768,16 +842,17 @@ int main(int, char**)
             ImGui::End();
         }
         {
-            ImGui::Begin("Output Image");
-            ImGui::Text("pointer = %x", output_image_texture);
+            ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x / 2.0f, 100.0f), ImGuiCond_Always);
+            ImGui::SetNextWindowSize(ImVec2(io.DisplaySize.x / 2.0f, io.DisplaySize.y - 100.0f), ImGuiCond_Always);
+            ImGuiWindowFlags window_flags = 0;
+            window_flags |= ImGuiWindowFlags_NoTitleBar;
+            window_flags |= ImGuiWindowFlags_NoResize;
+            window_flags |= ImGuiWindowFlags_NoCollapse;
+            window_flags |= ImGuiWindowFlags_NoMove;
+            ImGui::Begin("Output Image", nullptr, window_flags);
             ImGui::Text("size = %d x %d", output_image_width, output_image_height);
             if (show_output_image)
             {
-                if (ImGui::Button("Save output image as input image"))
-                {
-                    in_img = out_img;
-                    saveOutputAsInput(&input_image_texture, &input_image_width, &input_image_height, &input_image_channels, in_img);
-                }
                 ImGui::Image((void*)(intptr_t)output_image_texture, ImVec2(output_image_width * size_coefficient, output_image_height * size_coefficient));
             }
             ImGui::End();

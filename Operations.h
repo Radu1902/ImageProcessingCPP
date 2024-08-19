@@ -982,6 +982,84 @@ Image triangleThresholding(Image input)
 	return threshold(grayscale, (unsigned char)optimalThresh);
 }
 
+// adaptive local thresholding
+void getMask(Image input, unsigned int y, unsigned int x, unsigned int ksize, int* maskValues)
+{
+	if (input.isNull() || input.getType() != PixelType::GRAY)
+	{
+		return;
+	}
+	if (y < 0 || x < 0 || y >= input.getHeight() || x >= input.getWidth())
+	{
+		return;
+	}
+	//if (maskValues != nullptr) // ai grija sa initializezi la nullptr in functia principala
+	//{
+	//	delete[] maskValues;
+	//	maskValues = new int[ksize * ksize];
+	//}
+	int kernelBorder = ksize / 2;
+	int kernelUpBorder = y - kernelBorder;
+	int kernelDownBorder = y + kernelBorder;
+	int kernelLeftBorder = x - kernelBorder;
+	int kernelRightBorder = x + kernelBorder;
+	unsigned int kernelIndex = 0;
+
+	for (int ky = kernelUpBorder; ky <= kernelDownBorder; ky++)
+	{
+		for (int kx = kernelLeftBorder; kx <= kernelRightBorder; kx++)
+		{
+			if (ky >= input.getHeight() || ky < 0 || kx >= input.getWidth() || kx < 0)
+			{
+				maskValues[kernelIndex] = -1;
+			}
+			else
+			{
+				maskValues[kernelIndex] = input[ky][kx].getValue(0);
+			}
+			kernelIndex++;
+		}
+	}
+}
+Image bernsenThresholding(Image input, unsigned int ksize)
+{
+	if (input.isNull() || ksize % 2 == 0 || ksize > 1000)
+	{
+		Image img;
+		return img;
+	}
+	Image grayscale = convert2Gray(input);
+	int* maskValues = new int[ksize * ksize];
+
+	for (size_t y = 0; y < grayscale.getHeight(); y++)
+	{
+		for (size_t x = 0; x < grayscale.getWidth(); x++)
+		{
+			getMask(grayscale, y, x, ksize, maskValues);
+			int maskMax = 0;
+			int maskMin = 256;
+			for (size_t kIndex = 0; kIndex < ksize * ksize; kIndex++)
+			{
+				if (maskValues[kIndex] != -1)
+				{
+					if (maskValues[kIndex] > maskMax)
+						maskMax = maskValues[kIndex];
+					if (maskValues[kIndex] < maskMin)
+						maskMin = maskValues[kIndex];
+				}
+			}
+			unsigned char thresh = (maskMax + maskMin) / 2;
+			if (grayscale[y][x].getValue(0) > thresh)
+				grayscale[y][x].setValue(255, 0);
+			else
+				grayscale[y][x].setValue(0, 0);
+		}
+	}
+	delete[] maskValues;
+	return grayscale;
+}
+
+
 // filters
 
 Image meanFilter(Image input, int ksize)
