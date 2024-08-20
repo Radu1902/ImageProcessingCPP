@@ -198,6 +198,9 @@ int main(int, char**)
     int hue_range = 0;
     bool show_hsv_thresh_dialog = false;
 
+    bool separable_kernel = false;
+    bool show_mean_dialog = false;
+
     while (!glfwWindowShouldClose(window))
     {
         glfwPollEvents();
@@ -432,8 +435,12 @@ int main(int, char**)
 
                         ImGui::EndMenu();
                     }
-                    if (ImGui::BeginMenu("Filters"))
+                    if (ImGui::BeginMenu("Low pass filters"))
                     {
+                        if (ImGui::MenuItem("Mean filter"))
+                        {
+                            show_mean_dialog = true;
+                        }
                         ImGui::EndMenu();
                     }
                 }
@@ -815,6 +822,20 @@ int main(int, char**)
                 writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
                 show_output_image = true;
                 show_hsv_thresh_dialog = false;
+            }
+            ImGui::End();
+        }
+        if (show_mean_dialog)
+        {
+            ImGui::Begin("Mean filter", &show_mean_dialog);
+            ImGui::InputInt("Choose kernel size", &ksize, 2);
+            ImGui::Checkbox("Separable Kernel (better performance)", &separable_kernel);
+            if (ImGui::Button("Apply"))
+            {
+                out_img = meanFilter(in_img, ksize, separable_kernel);
+                writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                show_output_image = true;
+                show_mean_dialog = false;
             }
             ImGui::End();
         }

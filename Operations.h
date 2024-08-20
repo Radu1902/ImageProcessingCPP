@@ -516,7 +516,7 @@ void getEqualizedLookUpTable(unsigned char lut[256], unsigned int histogram[256]
 	{
 		cumulation += histogram[pixelValue];
 		normalizedCumulation = (float)cumulation / (float)pixelCount * 255.0f;
-		lut[pixelValue] = (char)normalizedCumulation;
+		lut[pixelValue] = (unsigned char)normalizedCumulation;
 	}
 }
 Image histogramEqualizationOperator(Image input)
@@ -1209,44 +1209,206 @@ Image hsvThresholding(Image input, unsigned char red, unsigned char green, unsig
 	return output;
 }
 
-
 // low pass filters
 
-Image meanFilter(Image input, int ksize)
+Image convolution(Image padded, float** kernel, int ksize)
 {
-	if (input.isNull() || ksize % 2 == 0 || ksize > 1000)
+	// assumes that the image is already padded in accordance to the kernel size
+	if (padded.isNull() || ksize <= 0)
 	{
 		Image img;
 		return img;
 	}
-	Image output(input);
-	int* maskValues = new int[ksize * ksize];
+	
+	int borderSize = ksize / 2;
+	Image output(padded.getHeight() - borderSize * 2, padded.getWidth() - borderSize * 2, padded.getType());
 
-
-	for (size_t y = 0; y < output.getHeight(); y++)
+	if (padded.getType() == PixelType::GRAY)
 	{
-		for (size_t x = 0; x < output.getWidth(); x++)
+		for (size_t y = borderSize; y < padded.getHeight() - borderSize; y++)
 		{
-			getColorMask(output, y, x, ksize, maskValues);
-			int maskMax = 0;
-			int maskMin = 256;
-			for (size_t kIndex = 0; kIndex < ksize * ksize; kIndex++)
+			for (size_t x = borderSize; x < padded.getWidth() - borderSize; x++)
 			{
-				if (maskValues[kIndex] != -1)
+				float ksum = 0;
+				for (size_t ky = 0; ky < ksize; ky++)
 				{
-					if (maskValues[kIndex] > maskMax)
-						maskMax = maskValues[kIndex];
-					if (maskValues[kIndex] < maskMin)
-						maskMin = maskValues[kIndex];
+					for (size_t kx = 0; kx < ksize; kx++)
+					{
+						ksum += kernel[ky][kx] * (float)padded[y - borderSize + ky][x - borderSize + kx].getValue(0);
+					}
 				}
+				output[y - borderSize][x - borderSize].setValue((unsigned char)ksum, 0);
 			}
-			unsigned char thresh = (maskMax + maskMin) / 2;
-			if (output[y][x].getValue(0) > thresh)
-				output[y][x].setValue(255, 0);
-			else
-				output[y][x].setValue(0, 0);
 		}
 	}
-	delete[] maskValues;
+	else
+	{
+		for (size_t y = borderSize; y < padded.getHeight() - borderSize; y++)
+		{
+			for (size_t x = borderSize; x < padded.getWidth() - borderSize; x++)
+			{
+				float rksum = 0;
+				float gksum = 0;
+				float bksum = 0;
+				for (size_t ky = 0; ky < ksize; ky++)
+				{
+					for (size_t kx = 0; kx < ksize; kx++)
+					{
+						rksum += kernel[ky][kx] * (float)padded[y - borderSize + ky][x - borderSize + kx].getValue(0);
+						gksum += kernel[ky][kx] * (float)padded[y - borderSize + ky][x - borderSize + kx].getValue(1);
+						bksum += kernel[ky][kx] * (float)padded[y - borderSize + ky][x - borderSize + kx].getValue(2);
+					}
+				}
+				output[y - borderSize][x - borderSize].setValue((unsigned char)rksum, 0);
+				output[y - borderSize][x - borderSize].setValue((unsigned char)gksum, 1);
+				output[y - borderSize][x - borderSize].setValue((unsigned char)bksum, 2);
+			}
+		}
+	}
+	return output;
+}
+Image separableConvolution(Image padded, float* yKernel, float* xKernel, int yksize, int xksize)
+{
+	// assumes that the image is already padded in accordance to the kernel size
+	if (padded.isNull() || xksize <= 0 || yksize <= 0)
+	{
+		Image img;
+		return img;
+	}
+
+	int yBorderSize = yksize / 2;
+	int xBorderSize = xksize / 2;
+	Image temp(padded.getHeight() - yBorderSize * 2, padded.getWidth(), padded.getType());
+	Image output(padded.getHeight() - yBorderSize * 2, padded.getWidth() - xBorderSize * 2, padded.getType());
+
+	if (padded.getType() == PixelType::GRAY)
+	{
+		for (size_t y = yBorderSize; y < padded.getHeight() - yBorderSize; y++)
+		{
+			for (size_t x = 0; x < padded.getWidth(); x++)
+			{
+				float ksum = 0;
+				for (size_t ky = 0; ky < yksize; ky++)
+				{
+					ksum += yKernel[ky] * (float)padded[y - yBorderSize + ky][x].getValue(0);
+				}
+				temp[y - yBorderSize][x].setValue((unsigned char)ksum, 0);
+			}
+		}
+		for (size_t y = 0; y < temp.getHeight(); y++)
+		{
+			for (size_t x = yBorderSize; x < temp.getWidth() - yBorderSize; x++)
+			{
+				float ksum = 0;
+				for (size_t kx = 0; kx < xksize; kx++)
+				{
+					ksum += xKernel[kx] * (float)temp[y][x - xBorderSize + kx].getValue(0);
+				}
+				output[y][x - xBorderSize].setValue((unsigned char)ksum, 0);
+			}
+		}
+	}
+	else
+	{
+		for (size_t y = yBorderSize; y < padded.getHeight() - yBorderSize; y++)
+		{
+			for (size_t x = 0; x < padded.getWidth(); x++)
+			{
+				float rksum = 0;
+				float gksum = 0;
+				float bksum = 0;
+				for (size_t ky = 0; ky < yksize; ky++)
+				{
+					rksum += yKernel[ky] * (float)padded[y - yBorderSize + ky][x].getValue(0);
+					gksum += yKernel[ky] * (float)padded[y - yBorderSize + ky][x].getValue(1);
+					bksum += yKernel[ky] * (float)padded[y - yBorderSize + ky][x].getValue(2);
+				}
+				temp[y - yBorderSize][x].setValue((unsigned char)rksum, 0);
+				temp[y - yBorderSize][x].setValue((unsigned char)gksum, 1);
+				temp[y - yBorderSize][x].setValue((unsigned char)bksum, 2);
+			}
+		}
+		for (size_t y = 0; y < temp.getHeight(); y++)
+		{
+			for (size_t x = yBorderSize; x < temp.getWidth() - yBorderSize; x++)
+			{
+				float rksum = 0;
+				float gksum = 0;
+				float bksum = 0;
+				for (size_t kx = 0; kx < xksize; kx++)
+				{
+					rksum += xKernel[kx] * (float)temp[y][x - xBorderSize + kx].getValue(0);
+					gksum += xKernel[kx] * (float)temp[y][x - xBorderSize + kx].getValue(1);
+					bksum += xKernel[kx] * (float)temp[y][x - xBorderSize + kx].getValue(2);
+				}
+				output[y][x - xBorderSize].setValue((unsigned char)rksum, 0);
+				output[y][x - xBorderSize].setValue((unsigned char)gksum, 1);
+				output[y][x - xBorderSize].setValue((unsigned char)bksum, 2);
+			}
+		}
+	}
+	return output;
+}
+
+Image meanFilter(Image input, int ksize, bool separableKernel)
+{
+	if (input.isNull() || ksize <= 0)
+	{
+		Image img;
+		return img;
+	}
+	if (ksize > MIN(input.getHeight(), input.getWidth()))
+	{
+		ksize == MIN(input.getHeight(), input.getWidth());
+	}
+	if (ksize % 2 == 0)
+	{
+		ksize--;
+	}
+	Image padded = mirrorPadding(input, ksize / 2);
+	Image output;
+
+	if (separableKernel)
+	{
+		float kernelValues = 1.0f / (ksize);
+		float* meanYKernel = new float[ksize];
+		float* meanXKernel = new float[ksize];
+
+		for (size_t ky = 0; ky < ksize; ky++)
+		{
+			meanYKernel[ky] = kernelValues;
+		}
+		for (size_t kx = 0; kx < ksize; kx++)
+		{
+			meanXKernel[kx] = kernelValues;
+		}
+		output = separableConvolution(padded, meanYKernel, meanXKernel, ksize, ksize);
+
+		delete[] meanYKernel;
+		delete[] meanXKernel;
+	}
+	else
+	{
+		float kernelValues = 1.0f / (ksize * ksize);
+		float** meanKernel = new float* [ksize];
+
+		for (size_t ky = 0; ky < ksize; ky++)
+		{
+			meanKernel[ky] = new float[ksize];
+			for (size_t kx = 0; kx < ksize; kx++)
+			{
+				meanKernel[ky][kx] = kernelValues;
+			}
+		}
+		output = convolution(padded, meanKernel, ksize);
+
+		for (size_t ky = 0; ky < ksize; ky++)
+		{
+			delete[] meanKernel[ky];
+		}
+		delete[] meanKernel;
+	}
+
+
 	return output;
 }
