@@ -44,19 +44,23 @@ public:
 			}
 		}
 	}
-	Image(int height_, int width_, int channels_)
+	Image(int height_, int width_, PixelType type_)
 	{
 		height = height_;
 		width = width_;
-		channels = channels_;
-		data = new Pixel * [height];
+		if (type_ == PixelType::GRAY)
+			channels = 1;
+		else
+			channels = 3;
+
+		data = new Pixel*[height];
 
 		for (size_t y = 0; y < height; y++)
 		{
 			data[y] = new Pixel[width];
 			for (size_t x = 0; x < width; x++)
 			{
-				data[y][x] = Pixel(channels);
+				data[y][x] = Pixel(type_);
 			}
 		}
 	}

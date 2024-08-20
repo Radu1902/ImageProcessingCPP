@@ -122,6 +122,11 @@ int main(int, char**)
 
     static float size_coefficient = 1.0f;
 
+    int padding_size = 1;
+    int mirror_padding_size = 1;
+    bool show_padding_dialog = false;
+    bool show_mirror_dialog = false;
+
     // histogram
 
     unsigned int inChan1Histogram[256] = { 0 };
@@ -189,6 +194,10 @@ int main(int, char**)
     int ksize = 1;
     bool show_bernsen_dialog = false;
 
+    float color[3] = { 0.0f, 0.0f, 0.0f };
+    int hue_range = 0;
+    bool show_hsv_thresh_dialog = false;
+
     while (!glfwWindowShouldClose(window))
     {
         glfwPollEvents();
@@ -241,6 +250,14 @@ int main(int, char**)
 
                             writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
                             show_output_image = true;
+                        }
+                        if (ImGui::MenuItem("Zero paddding"))
+                        {
+                            show_padding_dialog = true;
+                        }
+                        if (ImGui::MenuItem("Mirror paddding"))
+                        {
+                            show_mirror_dialog = true;
                         }
                         if (show_input_image) // if show_input_image is true, it means in_img is not null
                         {
@@ -408,6 +425,10 @@ int main(int, char**)
                         {
                             show_bernsen_dialog = true;
                         }
+                        if (ImGui::MenuItem("HSV thresholding"))
+                        {
+                            show_hsv_thresh_dialog = true;
+                        }
 
                         ImGui::EndMenu();
                     }
@@ -530,6 +551,32 @@ int main(int, char**)
         if (show_path_selector)
         {
             drawPathSelector(&input_path, &show_path_selector);
+        }
+        if (show_padding_dialog)
+        {
+            ImGui::Begin("Image zero padding", &show_padding_dialog);
+            ImGui::InputInt("Choose padding size", &padding_size);
+            if (ImGui::Button("Choose") && padding_size > 0)
+            {
+                out_img = zeroPadding(in_img, padding_size);
+                writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                show_output_image = true;
+                show_padding_dialog = false;
+            }
+            ImGui::End();
+        }
+        if (show_mirror_dialog)
+        {
+            ImGui::Begin("Image mirror padding", &show_mirror_dialog);
+            ImGui::SliderInt("Choose padding size", &mirror_padding_size, 0, MIN(input_image_width, input_image_height));
+            if (ImGui::Button("Choose") && mirror_padding_size > 0)
+            {
+                out_img = mirrorPadding(in_img, mirror_padding_size);
+                writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                show_output_image = true;
+                show_mirror_dialog = false;
+            }
+            ImGui::End();
         }
 
         // pointwise operations
@@ -723,7 +770,7 @@ int main(int, char**)
             ImGui::ColorEdit3("Max color", maxColor);
             if (ImGui::Button("Apply"))
             {
-                out_img = colorThreshold(in_img, (char)(minColor[0] * 255), (char)(minColor[1] * 255), (char)(minColor[2] * 255), (char)(maxColor[0] * 255), (char)(maxColor[1] * 255), (char)(maxColor[2] * 255));
+                out_img = colorThreshold(in_img, (unsigned char)(minColor[0] * 255), (unsigned char)(minColor[1] * 255), (unsigned char)(minColor[2] * 255), (unsigned char)(maxColor[0] * 255), (unsigned char)(maxColor[1] * 255), (unsigned char)(maxColor[2] * 255));
                 writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
                 show_output_image = true;
                 show_color_thresh_dialog = false;
@@ -757,6 +804,20 @@ int main(int, char**)
             }
             ImGui::End();
         }
+        if (show_hsv_thresh_dialog)
+        {
+            ImGui::Begin("hsv thresholding", &show_hsv_thresh_dialog);
+            ImGui::ColorEdit3("Color", color);
+            ImGui::SliderInt("Hue Range", &hue_range, 0, 255);
+            if (ImGui::Button("Apply"))
+            {
+                out_img = hsvThresholding(in_img, (unsigned char)(maxColor[0] * 255), (unsigned char)(maxColor[1] * 255), (unsigned char)(maxColor[2] * 255), (unsigned char)hue_range);
+                writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                show_output_image = true;
+                show_hsv_thresh_dialog = false;
+            }
+            ImGui::End();
+        }
 
         // Image display
 
@@ -773,15 +834,6 @@ int main(int, char**)
                 show_imgproc_operations = true;
             }
         }
-        //if (input_path != nullptr && show_input_image == false)
-        //{
-        //    input_ret = loadTextureFromFile(input_path, &input_image_texture, &input_image_width, &input_image_height);
-        //    in_img.loadImage(input_path, 3);
-
-        //    IM_ASSERT(input_ret);
-        //    show_input_image = true;
-        //    show_imgproc_operations = true;
-        //}
 
         ImGuiIO io = ImGui::GetIO();
         {

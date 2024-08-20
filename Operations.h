@@ -90,6 +90,124 @@ Image convert2HSV(Image input)
 	return hsv;
 }
 
+Image zeroPadding(Image input, unsigned int padSize)
+{
+	if (input.isNull())
+	{
+		Image img;
+		return img;
+	}
+	Image output(input.getHeight() + padSize * 2, input.getWidth() + padSize * 2, input.getType());
+
+	if (output.getType() == PixelType::GRAY)
+	{
+		for (size_t y = padSize; y < output.getHeight() - padSize; y++)
+		{
+			for (size_t x = padSize; x < output.getWidth() - padSize; x++)
+			{
+				output[y][x].setValue(input[y - padSize][x - padSize].getValue(0), 0);
+			}
+		}
+	}
+	else
+	{
+		for (size_t y = padSize; y < output.getHeight() - padSize; y++)
+		{
+			for (size_t x = padSize; x < output.getWidth() - padSize; x++)
+			{
+				output[y][x].setValue(input[y - padSize][x - padSize].getValue(0), 0);
+				output[y][x].setValue(input[y - padSize][x - padSize].getValue(1), 1);
+				output[y][x].setValue(input[y - padSize][x - padSize].getValue(2), 2);
+			}
+		}
+	}
+	
+	return output;
+}
+
+Image mirrorPadding(Image input, unsigned int padSize)
+{
+	if (input.isNull())
+	{
+		Image img;
+		return img;
+	}
+	Image output = zeroPadding(input, padSize);
+	if (output.getType() == PixelType::GRAY)
+	{
+		for (size_t y = 0; y < output.getHeight(); y++)
+		{
+			for (size_t x = 0; x < padSize; x++)
+			{
+				output[y][x].setValue(output[y][padSize * 2 - x].getValue(0), 0);
+			}
+		}
+		for (size_t y = 0; y < output.getHeight(); y++)
+		{
+			for (size_t x = output.getWidth() - 1 - padSize; x < output.getWidth(); x++)
+			{
+				output[y][x].setValue(output[y][2 * (output.getWidth() - padSize - 1) - x].getValue(0), 0);
+			}
+		}
+		for (size_t y = 0; y < padSize; y++)
+		{
+			for (size_t x = 0; x < output.getWidth(); x++)
+			{
+				output[y][x].setValue(output[padSize * 2 - y][x].getValue(0), 0);
+			}
+		}
+		for (size_t y = output.getHeight() - 1 - padSize; y < output.getHeight(); y++)
+		{
+			for (size_t x = 0; x < output.getWidth(); x++)
+			{
+				output[y][x].setValue(output[2 * (output.getHeight() - padSize - 1) - y][x].getValue(0), 0);
+			}
+		}
+	}
+	else
+	{
+		for (size_t y = 0; y < output.getHeight(); y++)
+		{
+			for (size_t x = 0; x < padSize; x++)
+			{
+				output[y][x].setValue(output[y][padSize * 2 - x].getValue(0), 0);
+				output[y][x].setValue(output[y][padSize * 2 - x].getValue(1), 1);
+				output[y][x].setValue(output[y][padSize * 2 - x].getValue(2), 2);
+			}
+		}
+		for (size_t y = 0; y < output.getHeight(); y++)
+		{
+			for (size_t x = output.getWidth() - 1 - padSize; x < output.getWidth(); x++)
+			{
+				output[y][x].setValue(output[y][2 * (output.getWidth() - padSize - 1) - x].getValue(0), 0);
+				output[y][x].setValue(output[y][2 * (output.getWidth() - padSize - 1) - x].getValue(1), 1);
+				output[y][x].setValue(output[y][2 * (output.getWidth() - padSize - 1) - x].getValue(2), 2);
+			}
+		}
+		for (size_t y = 0; y < padSize; y++)
+		{
+			for (size_t x = 0; x < output.getWidth(); x++)
+			{
+				output[y][x].setValue(output[padSize * 2 - y][x].getValue(0), 0);
+				output[y][x].setValue(output[padSize * 2 - y][x].getValue(1), 1);
+				output[y][x].setValue(output[padSize * 2 - y][x].getValue(2), 2);
+			}
+		}
+		for (size_t y = output.getHeight() - 1 - padSize; y < output.getHeight(); y++)
+		{
+			for (size_t x = 0; x < output.getWidth(); x++)
+			{
+				output[y][x].setValue(output[2 * (output.getHeight() - padSize - 1) - y][x].getValue(0), 0);
+				output[y][x].setValue(output[2 * (output.getHeight() - padSize - 1) - y][x].getValue(1), 1);
+				output[y][x].setValue(output[2 * (output.getHeight() - padSize - 1) - y][x].getValue(2), 2);
+			}
+		}
+	}
+	
+
+	return output;
+}
+
 Image invert(Image input)
 {
 	if (input.isNull())
@@ -982,22 +1100,10 @@ Image triangleThresholding(Image input)
 	return threshold(grayscale, (unsigned char)optimalThresh);
 }
 
-// adaptive local thresholding
-void getMask(Image input, unsigned int y, unsigned int x, unsigned int ksize, int* maskValues)
+// local thresholding
+
+void getGrayMask(Image padded, unsigned int y, unsigned int x, unsigned int ksize, int* maskValues)
 {
-	if (input.isNull() || input.getType() != PixelType::GRAY)
-	{
-		return;
-	}
-	if (y < 0 || x < 0 || y >= input.getHeight() || x >= input.getWidth())
-	{
-		return;
-	}
-	//if (maskValues != nullptr) // ai grija sa initializezi la nullptr in functia principala
-	//{
-	//	delete[] maskValues;
-	//	maskValues = new int[ksize * ksize];
-	//}
 	int kernelBorder = ksize / 2;
 	int kernelUpBorder = y - kernelBorder;
 	int kernelDownBorder = y + kernelBorder;
@@ -1009,33 +1115,119 @@ void getMask(Image input, unsigned int y, unsigned int x, unsigned int ksize, in
 	{
 		for (int kx = kernelLeftBorder; kx <= kernelRightBorder; kx++)
 		{
-			if (ky >= input.getHeight() || ky < 0 || kx >= input.getWidth() || kx < 0)
-			{
-				maskValues[kernelIndex] = -1;
-			}
-			else
-			{
-				maskValues[kernelIndex] = input[ky][kx].getValue(0);
-			}
+			maskValues[kernelIndex] = padded[ky][kx].getValue(0);
 			kernelIndex++;
 		}
 	}
 }
+void getColorMask(Image padded, unsigned int y, unsigned int x, unsigned int ksize, int* maskValues)
+{
+	int kernelBorder = ksize / 2;
+	int kernelUpBorder = y - kernelBorder;
+	int kernelDownBorder = y + kernelBorder;
+	int kernelLeftBorder = x - kernelBorder;
+	int kernelRightBorder = x + kernelBorder;
+	unsigned int kernelIndex = 0;
+
+	for (int ky = kernelUpBorder; ky <= kernelDownBorder; ky++)
+	{
+		for (int kx = kernelLeftBorder; kx <= kernelRightBorder; kx++)
+		{
+			maskValues[kernelIndex] = padded[ky][kx].getValue(0);
+			maskValues[kernelIndex + 1] = padded[ky][kx].getValue(1);
+			maskValues[kernelIndex + 2] = padded[ky][kx].getValue(2);
+			kernelIndex += 3;
+		}
+	}
+}
 Image bernsenThresholding(Image input, unsigned int ksize)
+{
+	if (input.isNull() || ksize % 2 == 0 || ksize > MIN(input.getHeight(), input.getWidth()))
+	{
+		Image img;
+		return img;
+	}
+	int borderSize = ksize / 2;
+	Image padded = mirrorPadding(convert2Gray(input), borderSize);
+	Image output(input.getHeight(), input.getWidth(), PixelType::GRAY);
+	
+	int* maskValues = new int[ksize * ksize];
+
+	for (size_t y = borderSize; y < padded.getHeight() - borderSize; y++)
+	{
+		for (size_t x = borderSize; x < padded.getWidth() - borderSize; x++)
+		{
+			getGrayMask(padded, y, x, ksize, maskValues);
+			int maskMax = 0;
+			int maskMin = 256;
+			for (size_t kIndex = 0; kIndex < ksize * ksize; kIndex++)
+			{
+				if (maskValues[kIndex] > maskMax)
+					maskMax = maskValues[kIndex];
+				if (maskValues[kIndex] < maskMin)
+					maskMin = maskValues[kIndex];
+			}
+			unsigned char thresh = (maskMax + maskMin) / 2;
+			if (padded[y][x].getValue(0) > thresh)
+				output[y - borderSize][x - borderSize].setValue(255, 0);
+			else
+				output[y - borderSize][x - borderSize].setValue(0, 0);
+		}
+	}
+	delete[] maskValues;
+	return output;
+}
+
+Image hsvThresholding(Image input, unsigned char red, unsigned char green, unsigned char blue, float hueRange)
+{
+	if (input.isNull())
+	{
+		Image img;
+		return img;
+	}
+	Image hsv = convert2HSV(input);
+	Image output = convert2Gray(input);
+
+	Pixel hsvData = Pixel(PixelType::RGB);
+	hsvData.setValue(red, 0);
+	hsvData.setValue(green, 1);
+	hsvData.setValue(blue, 2);
+	hsvData.cvtHSV();
+	int hue = (int)hsvData.getValue(0);
+
+	for (size_t y = 0; y < hsv.getHeight(); y++)
+	{
+		for (size_t x = 0; x < hsv.getWidth(); x++)
+		{
+			float hueDiff = abs(hue - (int)hsv[y][x].getValue(0));
+			if (hueDiff < hueRange)
+				output[y][x].setValue(255, 0);
+			else
+				output[y][x].setValue(0, 0);
+		}
+	}
+	return output;
+}
+
+
+// low pass filters
+
+Image meanFilter(Image input, int ksize)
 {
 	if (input.isNull() || ksize % 2 == 0 || ksize > 1000)
 	{
 		Image img;
 		return img;
 	}
-	Image grayscale = convert2Gray(input);
+	Image output(input);
 	int* maskValues = new int[ksize * ksize];
 
-	for (size_t y = 0; y < grayscale.getHeight(); y++)
+
+	for (size_t y = 0; y < output.getHeight(); y++)
 	{
-		for (size_t x = 0; x < grayscale.getWidth(); x++)
+		for (size_t x = 0; x < output.getWidth(); x++)
 		{
-			getMask(grayscale, y, x, ksize, maskValues);
+			getColorMask(output, y, x, ksize, maskValues);
 			int maskMax = 0;
 			int maskMin = 256;
 			for (size_t kIndex = 0; kIndex < ksize * ksize; kIndex++)
@@ -1049,25 +1241,12 @@ Image bernsenThresholding(Image input, unsigned int ksize)
 				}
 			}
 			unsigned char thresh = (maskMax + maskMin) / 2;
-			if (grayscale[y][x].getValue(0) > thresh)
-				grayscale[y][x].setValue(255, 0);
+			if (output[y][x].getValue(0) > thresh)
+				output[y][x].setValue(255, 0);
 			else
-				grayscale[y][x].setValue(0, 0);
+				output[y][x].setValue(0, 0);
 		}
 	}
 	delete[] maskValues;
-	return grayscale;
-}
-
-
-// filters
-
-Image meanFilter(Image input, int ksize)
-{
-	if (ksize < 1 || ksize % 2 == 0 || ksize >= input.getWidth() || ksize >= input.getHeight())
-	{
-		Image img;
-		return img;
-	}
-
+	return output;
 }

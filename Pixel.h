@@ -26,12 +26,6 @@ public:
 			data[i] = 0;
 		}
 	}
-	//Pixel(unsigned char* data_, int channels_, PixelType type_)
-	//{
-	//	this->data = data_;
-	//	this->channels = channels_;
-	//	this->type = type_;
-	//}
 	Pixel(const Pixel& px)
 	{
 		this->channels = px.channels;
