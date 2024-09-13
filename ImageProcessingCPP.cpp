@@ -11,7 +11,7 @@ void drawPathSelector(char** path, bool* keep_open) {
     // open Dialog Simple
     IGFD::FileDialogConfig config;
     config.path = ".";
-    ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".jpg,.png,.bmp,.jpeg", config);
+    ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".jpg,.png,.bmp", config);
     char* path_string = nullptr;
     // display
     if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) {
@@ -84,14 +84,14 @@ int main(int, char**)
 
     ImGui_ImplOpenGL3_Init(glsl_version);
 
-    static ImU32 colorDataGray[1] = { 0xAAAAAAAA };
+    static ImU32 colorDataGray[1] = { 0xFFAAAAAA };
     static ImU32 colorDataRGB[3] = { 0xFF0000FF, 0xFF00FF00, 0xFFFF0000 };
     static ImU32 colorDataHSV[3] = { 0xFF00FFFF, 0xFFFFFF00, 0xFFFF00FF };
     int GrayMap = ImPlot::AddColormap("GrayColor", colorDataGray, 32);
     int RGBMap = ImPlot::AddColormap("RGBColors", colorDataRGB, 32);
     int HSVMap = ImPlot::AddColormap("HSVColors", colorDataHSV, 32);
 
-    bool show_demo_window = true;
+    bool show_demo_window = false;
 
 
     bool input_image_exists = false;
@@ -200,6 +200,9 @@ int main(int, char**)
 
     bool separable_kernel = false;
     bool show_mean_dialog = false;
+
+    float standard_deviation = 1;
+    bool show_gaussian_dialog = false;
 
     while (!glfwWindowShouldClose(window))
     {
@@ -440,6 +443,10 @@ int main(int, char**)
                         if (ImGui::MenuItem("Mean filter"))
                         {
                             show_mean_dialog = true;
+                        }
+                        if (ImGui::MenuItem("Gaussian filter"))
+                        {
+                            show_gaussian_dialog = true;
                         }
                         ImGui::EndMenu();
                     }
@@ -839,22 +846,22 @@ int main(int, char**)
             }
             ImGui::End();
         }
+        if (show_gaussian_dialog)
+        {
+            ImGui::Begin("Mean filter", &show_gaussian_dialog);
+            ImGui::SliderFloat("Choose standard deviation value", &standard_deviation, 0.0f, 10.0f);
+            //ImGui::Checkbox("Separable Kernel (better performance)", &separable_kernel);
+            if (ImGui::Button("Apply"))
+            {
+                out_img = gaussianFilter(in_img, standard_deviation, separable_kernel);
+                writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                show_output_image = true;
+                show_gaussian_dialog = false;
+            }
+            ImGui::End();
+        }
 
         // Image display
-
-        if (input_path != nullptr)
-        {
-            ImGui::Text("file path: %s", input_path);
-            if (ImGui::Button("Load image"))
-            {
-                input_ret = loadTextureFromFile(input_path, &input_image_texture, &input_image_width, &input_image_height);
-                in_img.loadImage(input_path, 3);
-
-                IM_ASSERT(input_ret);
-                show_input_image = true;
-                show_imgproc_operations = true;
-            }
-        }
 
         ImGuiIO io = ImGui::GetIO();
         {
@@ -865,9 +872,8 @@ int main(int, char**)
             window_flags |= ImGuiWindowFlags_NoResize;
             window_flags |= ImGuiWindowFlags_NoCollapse;
             window_flags |= ImGuiWindowFlags_NoMove;
-
+            window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus;
             ImGui::Begin("Menu", nullptr, window_flags);
-            ImGui::SliderFloat("resize  (VISUAL ONLY)", &size_coefficient, 0.1f, 10.0f);
             if (ImGui::Button("Choose file"))
             {
                 show_path_selector = true;
@@ -895,6 +901,8 @@ int main(int, char**)
                     saveOutputAsInput(&input_image_texture, &input_image_width, &input_image_height, &input_image_channels, in_img);
                 }
             }
+            ImGui::SliderFloat("resize  (VISUAL ONLY)", &size_coefficient, 0.1f, 10.0f);
+
             ImGui::End();
         }
         {
@@ -905,6 +913,7 @@ int main(int, char**)
             window_flags |= ImGuiWindowFlags_NoResize;
             window_flags |= ImGuiWindowFlags_NoCollapse;
             window_flags |= ImGuiWindowFlags_NoMove;
+            window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus;
             ImGui::Begin("Input Image", nullptr, window_flags);
             ImGui::Text("size = %d x %d", input_image_width, input_image_height);
 
@@ -922,6 +931,7 @@ int main(int, char**)
             window_flags |= ImGuiWindowFlags_NoResize;
             window_flags |= ImGuiWindowFlags_NoCollapse;
             window_flags |= ImGuiWindowFlags_NoMove;
+            window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus;
             ImGui::Begin("Output Image", nullptr, window_flags);
             ImGui::Text("size = %d x %d", output_image_width, output_image_height);
             if (show_output_image)

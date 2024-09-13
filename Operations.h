@@ -1162,10 +1162,8 @@ Image bernsenThresholding(Image input, unsigned int ksize)
 			int maskMin = 256;
 			for (size_t kIndex = 0; kIndex < ksize * ksize; kIndex++)
 			{
-				if (maskValues[kIndex] > maskMax)
-					maskMax = maskValues[kIndex];
-				if (maskValues[kIndex] < maskMin)
-					maskMin = maskValues[kIndex];
+				maskMax = MAX(maskMax, maskValues[kIndex]);
+				maskMin = MIN(maskMin, maskValues[kIndex]);
 			}
 			unsigned char thresh = (maskMax + maskMin) / 2;
 			if (padded[y][x].getValue(0) > thresh)
@@ -1407,6 +1405,87 @@ Image meanFilter(Image input, int ksize, bool separableKernel)
 			delete[] meanKernel[ky];
 		}
 		delete[] meanKernel;
+	}
+
+
+	return output;
+}
+
+Image gaussianFilter(Image input, float standardDeviation, bool separableKernel)
+{
+	int center = (int)(3.0f * standardDeviation);
+	int ksize = center * 2 + 1;
+	center--;
+	if (input.isNull() || ksize <= 0)
+	{
+		Image img;
+		return img;
+	}
+	if (ksize > MIN(input.getHeight(), input.getWidth()))
+	{
+		ksize == MIN(input.getHeight(), input.getWidth());
+	}
+	if (ksize % 2 == 0)
+	{
+		ksize--;
+	}
+	Image padded = mirrorPadding(input, ksize / 2);
+	Image output;
+
+	//float standardDeviation2 = standardDeviation * standardDeviation;
+
+	if (separableKernel)
+	{
+		float kernelValues = 1.0f / (ksize);
+		float* meanYKernel = new float[ksize];
+		float* meanXKernel = new float[ksize];
+
+		for (size_t ky = 0; ky < ksize; ky++)
+		{
+			meanYKernel[ky] = kernelValues;
+		}
+		for (size_t kx = 0; kx < ksize; kx++)
+		{
+			meanXKernel[kx] = kernelValues;
+		}
+		output = separableConvolution(padded, meanYKernel, meanXKernel, ksize, ksize);
+
+		delete[] meanYKernel;
+		delete[] meanXKernel;
+	}
+	else
+	{
+		float** gaussKernel = new float* [ksize];
+		float standardDeviation2 = standardDeviation * standardDeviation;
+		float sum = 0.0f;
+		for (size_t ky = 0; ky < ksize; ky++)
+		{
+			gaussKernel[ky] = new float[ksize];
+			for (size_t kx = 0; kx < ksize; kx++)
+			{
+				//float r = center - (ky * ksize) + kx;
+				//gaussKernel[ky][kx] = (float)((exp(-0.5 * (r * r) / standardDeviation2)));
+				//sum += gaussKernel[ky][kx];
+				gaussKernel[ky][kx] = (1.0f / (2.0f * IM_PI * standardDeviation2)) * exp(-((pow(ky - center, 2) + pow(kx - center, 2)) / (2.0f * standardDeviation2)));
+				sum += gaussKernel[ky][kx];
+			}
+		}
+		float coefficient = 1.0f / sum;
+		for (size_t ky = 0; ky < ksize; ky++)
+		{
+			for (size_t kx = 0; kx < ksize; kx++)
+			{
+				float newval = gaussKernel[ky][kx] * coefficient;
+				gaussKernel[ky][kx] = newval;
+			}
+		}
+		output = convolution(padded, gaussKernel, ksize);
+
+		for (size_t ky = 0; ky < ksize; ky++)
+		{
+			delete[] gaussKernel[ky];
+		}
+		delete[] gaussKernel;
 	}
 
 

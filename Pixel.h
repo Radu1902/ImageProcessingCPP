@@ -218,6 +218,8 @@ public:
 		if (type == PixelType::HSV)
 		{
 			short hDeg = data[0] * 2; // h was divided by 2 when converting from rgb, in order to fit in unsigned char datatype
+			if (hDeg >= 360) [[unlikely]]
+				hDeg = 0;
 			float s = (float)data[1] / 255.0f;
 			unsigned char v = data[2];
 

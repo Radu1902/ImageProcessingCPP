@@ -12,7 +12,6 @@ class Image
 
 public:
 
-
 	Image()
 	{
 		height = 0;
@@ -20,14 +19,6 @@ public:
 		channels = 3;
 		data = nullptr;
 	}
-
-	//Image(int height_, int width_, int channels_, Pixel** data_)
-	//{
-	//	this->height = height_;
-	//	this->width = width_;
-	//	this->channels = channels_;
-	//	this->data = data_;
-	//}
 
 	Image(const Image& img)
 	{
