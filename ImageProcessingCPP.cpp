@@ -5,7 +5,6 @@
 #include "ImGuiFileDialog.h"
 #include "Image.h"
 #include "Operations.h"
-#include <vector>
 
 void drawPathSelector(char** path, bool* keep_open) {
     // open Dialog Simple
