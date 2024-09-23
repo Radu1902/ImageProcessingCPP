@@ -1207,6 +1207,8 @@ Image hsvThresholding(Image input, unsigned char red, unsigned char green, unsig
 	return output;
 }
 
+// filtering
+
 // low pass filters
 
 Image convolution(Image padded, float** kernel, int ksize)
@@ -1488,6 +1490,29 @@ Image gaussianFilter(Image input, float standardDeviation, bool separableKernel)
 		delete[] gaussKernel;
 	}
 
+
+	return output;
+}
+
+// high pass filters
+
+Image prewittFilter(Image input)
+{
+	float** verticalKernel = new float*[3];
+	for (size_t y = 0; y < 3; y++)
+	{
+		verticalKernel[y] = new float[3];
+		verticalKernel[y][0] = -1;
+		verticalKernel[y][1] = 0;
+		verticalKernel[y][2] = 1;
+	}
+	//float** horizontalKernel = new float*[3];
+	//for (size_t y = 0; y < 3; y++)
+	//{
+	//	horizontalKernel[y] = new float[3];
+	//}
+	Image padded = mirrorPadding(input, 1);
+	Image output = convolution(padded, verticalKernel, 3.0f);
 
 	return output;
 }

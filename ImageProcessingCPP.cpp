@@ -449,6 +449,17 @@ int main(int, char**)
                         }
                         ImGui::EndMenu();
                     }
+                    if (ImGui::BeginMenu("High pass filters"))
+                    {
+                        if (ImGui::MenuItem("Prewitt gradient"))
+                        {
+                            out_img = prewittFilter(in_img);
+
+                            writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                            show_output_image = true;
+                        }
+                        ImGui::EndMenu();
+                    }
                 }
                 ImGui::EndMainMenuBar();
             }
