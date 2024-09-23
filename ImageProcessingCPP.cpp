@@ -203,6 +203,14 @@ int main(int, char**)
     float standard_deviation = 1;
     bool show_gaussian_dialog = false;
 
+    bool show_erosion_dialog = false;
+    bool show_dilation_dialog = false;
+    bool show_opening_dialog = false;
+    bool show_closing_dialog = false;
+
+    float scaling_coefficient = 1.0f;
+    bool show_scaling_dialog = false;
+
     while (!glfwWindowShouldClose(window))
     {
         glfwPollEvents();
@@ -457,6 +465,34 @@ int main(int, char**)
 
                             writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
                             show_output_image = true;
+                        }
+                        ImGui::EndMenu();
+                    }
+                    if (ImGui::BeginMenu("Morphological operators"))
+                    {
+                        if (ImGui::MenuItem("Grayscale erosion"))
+                        {
+                            show_erosion_dialog = true;
+                        }
+                        if (ImGui::MenuItem("Grayscale dilation"))
+                        {
+                            show_dilation_dialog = true;
+                        }
+                        if (ImGui::MenuItem("Grayscale opening"))
+                        {
+                            show_opening_dialog = true;
+                        }
+                        if (ImGui::MenuItem("Grayscale closing"))
+                        {
+                            show_closing_dialog = true;
+                        }
+                        ImGui::EndMenu();
+                    }
+                    if (ImGui::BeginMenu("Geometric transformations"))
+                    {
+                        if (ImGui::MenuItem("Scaling"))
+                        {
+                            show_scaling_dialog = true;
                         }
                         ImGui::EndMenu();
                     }
@@ -842,6 +878,9 @@ int main(int, char**)
             }
             ImGui::End();
         }
+
+        // low pass filters
+
         if (show_mean_dialog)
         {
             ImGui::Begin("Mean filter", &show_mean_dialog);
@@ -858,7 +897,7 @@ int main(int, char**)
         }
         if (show_gaussian_dialog)
         {
-            ImGui::Begin("Mean filter", &show_gaussian_dialog);
+            ImGui::Begin("Gaussian filter", &show_gaussian_dialog);
             ImGui::SliderFloat("Choose standard deviation value", &standard_deviation, 0.0f, 10.0f);
             //ImGui::Checkbox("Separable Kernel (better performance)", &separable_kernel);
             if (ImGui::Button("Apply"))
@@ -870,6 +909,78 @@ int main(int, char**)
             }
             ImGui::End();
         }
+
+        // morphological operators
+
+        if (show_erosion_dialog)
+        {
+            ImGui::Begin("Erosion", &show_erosion_dialog);
+            ImGui::InputInt("Choose kernel size", &ksize, 2);
+            if (ImGui::Button("Apply"))
+            {
+                out_img = erosion(in_img, ksize);
+                writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                show_output_image = true;
+                show_erosion_dialog = false;
+            }
+            ImGui::End();
+        }
+        if (show_dilation_dialog)
+        {
+            ImGui::Begin("Dilation", &show_dilation_dialog);
+            ImGui::InputInt("Choose kernel size", &ksize, 2);
+            if (ImGui::Button("Apply"))
+            {
+                out_img = dilation(in_img, ksize);
+                writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                show_output_image = true;
+                show_dilation_dialog = false;
+            }
+            ImGui::End();
+        }
+        if (show_opening_dialog)
+        {
+            ImGui::Begin("Opening", &show_opening_dialog);
+            ImGui::InputInt("Choose kernel size", &ksize, 2);
+            if (ImGui::Button("Apply"))
+            {
+                out_img = opening(in_img, ksize);
+                writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                show_output_image = true;
+                show_opening_dialog = false;
+            }
+            ImGui::End();
+        }
+        if (show_closing_dialog)
+        {
+            ImGui::Begin("Closing", &show_closing_dialog);
+            ImGui::InputInt("Choose kernel size", &ksize, 2);
+            if (ImGui::Button("Apply"))
+            {
+                out_img = closing(in_img, ksize);
+                writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                show_output_image = true;
+                show_closing_dialog = false;
+            }
+            ImGui::End();
+        }
+
+        // geometric transformations
+
+        if (show_scaling_dialog)
+        {
+            ImGui::Begin("Image scaling", &show_scaling_dialog);
+            ImGui::InputFloat("Choose scaling coefficient", &scaling_coefficient);
+            if (ImGui::Button("Apply"))
+            {
+                out_img = scaling(in_img, scaling_coefficient);
+                writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                show_output_image = true;
+                show_scaling_dialog = false;
+            }
+            ImGui::End();
+        }
+
 
         // Image display
 

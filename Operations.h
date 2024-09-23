@@ -246,12 +246,12 @@ Image invert(Image input)
 
 // pointwise operations
 
-unsigned char pixelClamp(int value)
+unsigned char pixelClamp(long double value)
 {
 	if (value > 255)
-		return 255;
+		return (unsigned char)255;
 	if (value < 0)
-		return 0;
+		return (unsigned char)0;
 	return value;
 }
 
@@ -1237,6 +1237,10 @@ Image convolution(Image padded, float** kernel, int ksize)
 						ksum += kernel[ky][kx] * (float)padded[y - borderSize + ky][x - borderSize + kx].getValue(0);
 					}
 				}
+				//if (ksum > 255 || ksum < 0)
+				//	printf("asdf");
+				ksum = abs(ksum);
+				ksum = pixelClamp(ksum);
 				output[y - borderSize][x - borderSize].setValue((unsigned char)ksum, 0);
 			}
 		}
@@ -1259,6 +1263,12 @@ Image convolution(Image padded, float** kernel, int ksize)
 						bksum += kernel[ky][kx] * (float)padded[y - borderSize + ky][x - borderSize + kx].getValue(2);
 					}
 				}
+				rksum = abs(rksum);
+				gksum = abs(gksum);
+				bksum = abs(bksum);
+				pixelClamp(rksum);
+				pixelClamp(gksum);
+				pixelClamp(bksum);
 				output[y - borderSize][x - borderSize].setValue((unsigned char)rksum, 0);
 				output[y - borderSize][x - borderSize].setValue((unsigned char)gksum, 1);
 				output[y - borderSize][x - borderSize].setValue((unsigned char)bksum, 2);
@@ -1498,21 +1508,208 @@ Image gaussianFilter(Image input, float standardDeviation, bool separableKernel)
 
 Image prewittFilter(Image input)
 {
+	if (input.isNull())
+	{
+		Image img;
+		return img;
+	}
+	if (input.getType() != PixelType::GRAY)
+	{
+		input = convert2Gray(input);
+	}
 	float** verticalKernel = new float*[3];
 	for (size_t y = 0; y < 3; y++)
 	{
 		verticalKernel[y] = new float[3];
-		verticalKernel[y][0] = -1;
+		verticalKernel[y][0] = 1;
 		verticalKernel[y][1] = 0;
-		verticalKernel[y][2] = 1;
+		verticalKernel[y][2] = -1;
 	}
-	//float** horizontalKernel = new float*[3];
-	//for (size_t y = 0; y < 3; y++)
-	//{
-	//	horizontalKernel[y] = new float[3];
-	//}
-	Image padded = mirrorPadding(input, 1);
-	Image output = convolution(padded, verticalKernel, 3.0f);
 
+	float** horizontalKernel = new float*[3];
+	for (size_t y = 0; y < 3; y++)
+	{
+		horizontalKernel[y] = new float[3];
+	}
+	for (size_t x = 0; x < 3; x++)
+	{
+		horizontalKernel[0][x] = 1;
+		horizontalKernel[1][x] = 0;
+		horizontalKernel[2][x] = -1;
+	}
+	Image padded = mirrorPadding(input, 1);
+	Image verticalEdgeImage = convolution(padded, verticalKernel, 3.0f);
+	Image horizontalEdgeImage = convolution(padded, horizontalKernel, 3.0f);
+
+	Image output(input);
+	for (size_t y = 0; y < input.getHeight(); y++)
+	{
+		for (size_t x = 0; x < input.getWidth(); x++)
+		{
+			float edgeValue = sqrt(pow(verticalEdgeImage[y][x].getValue(0), 2) + pow(horizontalEdgeImage[y][x].getValue(0), 2));
+			edgeValue = pixelClamp(edgeValue);
+			output[y][x].setValue(edgeValue, 0);
+		}
+	}
+
+	for (size_t i = 0; i < 3; i++)
+	{
+		delete[] verticalKernel[i];
+		delete[] horizontalKernel[i];
+	}
+	delete[] verticalKernel;
+	delete[] horizontalKernel;
+
+	return output;
+}
+
+// Morphological operators
+
+Image erosion(Image input, int ksize) // image min pooling
+{
+	if (input.isNull())
+	{
+		Image img;
+		return img;
+	}
+	if (input.getType() != PixelType::GRAY)
+	{
+		input = convert2Gray(input);
+	}
+	int borderSize = ksize / 2;
+
+	Image padded = mirrorPadding(input, borderSize);
+	Image output(input);
+
+	for (size_t y = borderSize; y < padded.getHeight() - borderSize; y++)
+	{
+		for (size_t x = borderSize; x < padded.getWidth() - borderSize; x++)
+		{
+			unsigned char kMin = 255;
+			for (int ky = borderSize * -1; ky <= borderSize; ky++)
+			{
+				for (int kx = borderSize * -1; kx <= borderSize; kx++)
+				{
+					unsigned char pixelVal = padded[y + ky][x + kx].getValue(0);
+					if (pixelVal < kMin)
+						kMin = pixelVal;
+				}
+			}
+			output[y - borderSize][x - borderSize].setValue(kMin, 0);
+		}
+	}
+
+	return output;
+}
+
+Image dilation(Image input, int ksize) // image max pooling
+{
+	if (input.isNull())
+	{
+		Image img;
+		return img;
+	}
+	if (input.getType() != PixelType::GRAY)
+	{
+		input = convert2Gray(input);
+	}
+	int borderSize = ksize / 2;
+
+	Image padded = mirrorPadding(input, borderSize);
+	Image output(input);
+
+	for (size_t y = borderSize; y < padded.getHeight() - borderSize; y++)
+	{
+		for (size_t x = borderSize; x < padded.getWidth() - borderSize; x++)
+		{
+			unsigned char kMax = 0;
+			for (int ky = borderSize * -1; ky <= borderSize; ky++)
+			{
+				for (int kx = borderSize * -1; kx <= borderSize; kx++)
+				{
+					unsigned char pixelVal = padded[y + ky][x + kx].getValue(0);
+					if (pixelVal > kMax)
+						kMax = pixelVal;
+				}
+			}
+			output[y - borderSize][x - borderSize].setValue(kMax, 0);
+		}
+	}
+
+	return output;
+}
+
+Image opening(Image input, int ksize)
+{
+	if (input.isNull())
+	{
+		Image img;
+		return img;
+	}
+	if (input.getType() != PixelType::GRAY)
+	{
+		input = convert2Gray(input);
+	}
+
+	Image output = erosion(input, ksize);
+	output = dilation(output, ksize);
+	return output;
+}
+
+Image closing(Image input, int ksize)
+{
+	if (input.isNull())
+	{
+		Image img;
+		return img;
+	}
+	if (input.getType() != PixelType::GRAY)
+	{
+		input = convert2Gray(input);
+	}
+
+	Image output = dilation(input, ksize);
+	output = erosion(output, ksize);
+	return output;
+}
+
+// geometric transformations
+
+Image scaling(Image input, float coefficient)
+{
+	if (input.isNull())
+	{
+		Image img;
+		return img;
+	}
+
+	Image output((int)(input.getHeight() * coefficient), (int)(input.getWidth() * coefficient), input.getType());
+
+	if (input.getType() == PixelType::GRAY)
+	{
+		for (size_t y = 0; y < output.getHeight(); y++)
+		{
+			for (size_t x = 0; x < output.getWidth(); x++)
+			{
+				unsigned char correspondingValue = input[(int)(y / coefficient)][(int)(x / coefficient)].getValue(0);
+				output[y][x].setValue(correspondingValue, 0);
+			}
+		}
+	}
+	else
+	{
+		for (size_t y = 0; y < output.getHeight(); y++)
+		{
+			for (size_t x = 0; x < output.getWidth(); x++)
+			{
+				unsigned char correspondingR = input[(int)(y / coefficient)][(int)(x / coefficient)].getValue(0);
+				unsigned char correspondingG = input[(int)(y / coefficient)][(int)(x / coefficient)].getValue(1);
+				unsigned char correspondingB = input[(int)(y / coefficient)][(int)(x / coefficient)].getValue(2);
+				output[y][x].setValue(correspondingR, 0);
+				output[y][x].setValue(correspondingG, 1);
+				output[y][x].setValue(correspondingB, 2);
+			}
+		}
+	}
 	return output;
 }
