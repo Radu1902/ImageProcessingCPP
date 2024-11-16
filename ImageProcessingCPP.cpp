@@ -137,6 +137,20 @@ int main(int, char**)
     bool show_in_histogram = false;
     bool show_out_histogram = false;
 
+    // HSV ops
+
+    bool show_saturation_offset_dialog = false;
+    int saturationOffset = 0;
+
+    bool show_saturation_scaling_dialog = false;
+    float saturationMultiplier = 1;
+
+    bool show_value_offset_dialog = false;
+    int valueOffset = 0;
+
+    bool show_value_scaling_dialog = false;
+    float valueMultiplier = 1;
+
     // Pointwise ops
 
     int brightnessOffset = 0;
@@ -197,16 +211,22 @@ int main(int, char**)
     int hue_range = 0;
     bool show_hsv_thresh_dialog = false;
 
+    // lp filters
+
     bool separable_kernel = false;
     bool show_mean_dialog = false;
 
     float standard_deviation = 1;
     bool show_gaussian_dialog = false;
 
+    // hp filters
+
     bool show_erosion_dialog = false;
     bool show_dilation_dialog = false;
     bool show_opening_dialog = false;
     bool show_closing_dialog = false;
+
+    // geometric ops
 
     float scaling_coefficient = 1.0f;
     bool show_scaling_dialog = false;
@@ -303,6 +323,26 @@ int main(int, char**)
                                 }
                                 show_out_histogram = true;
                             }
+                        }
+                        ImGui::EndMenu();
+                    }
+                    if (ImGui::BeginMenu("HSV operations"))
+                    {
+                        if (ImGui::MenuItem("Saturation offset"))
+                        {
+                            show_saturation_offset_dialog = true;
+                        }
+                        if (ImGui::MenuItem("Saturation scaling"))
+                        {
+                            show_saturation_scaling_dialog = true;
+                        }
+                        if (ImGui::MenuItem("Value offset"))
+                        {
+                            show_value_offset_dialog = true;
+                        }
+                        if (ImGui::MenuItem("Value scaling"))
+                        {
+                            show_value_scaling_dialog = true;
                         }
                         ImGui::EndMenu();
                     }
@@ -639,7 +679,62 @@ int main(int, char**)
             ImGui::End();
         }
 
-        // pointwise operations
+        // HSV operations dialogs
+
+        if (show_saturation_offset_dialog)
+        {
+            ImGui::Begin("HSV saturation offset", &show_saturation_offset_dialog);
+            ImGui::SliderInt("Choose offset", &saturationOffset, -255, 255);
+            if (ImGui::Button("Choose"))
+            {
+                out_img = offsetSaturation(in_img, saturationOffset);
+                writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                show_output_image = true;
+                show_saturation_offset_dialog = false;
+            }
+            ImGui::End();
+        }
+        if (show_saturation_scaling_dialog)
+        {
+            ImGui::Begin("HSV saturation scaling", &show_saturation_scaling_dialog);
+            ImGui::InputFloat("Choose scaling factor", &saturationMultiplier);
+            if (ImGui::Button("Choose"))
+            {
+                out_img = scaleSaturation(in_img, saturationMultiplier);
+                writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                show_output_image = true;
+                show_saturation_scaling_dialog = false;
+            }
+            ImGui::End();
+        }
+        if (show_value_offset_dialog)
+        {
+            ImGui::Begin("HSV value offset", &show_value_offset_dialog);
+            ImGui::SliderInt("Choose offset", &valueOffset, -255, 255);
+            if (ImGui::Button("Choose"))
+            {
+                out_img = offsetValue(in_img, valueOffset);
+                writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                show_output_image = true;
+                show_value_offset_dialog = false;
+            }
+            ImGui::End();
+        }
+        if (show_value_scaling_dialog)
+        {
+            ImGui::Begin("HSV value scaling", &show_value_scaling_dialog);
+            ImGui::InputFloat("Choose scaling factor", &valueMultiplier);
+            if (ImGui::Button("Choose"))
+            {
+                out_img = scaleValue(in_img, valueMultiplier);
+                writeAndDisplayOutput(&output_image_texture, &output_image_width, &output_image_height, &output_image_channels, out_img);
+                show_output_image = true;
+                show_value_scaling_dialog = false;
+            }
+            ImGui::End();
+        }
+
+        // pointwise operations dialogs
 
         if (show_brightness_dialog)
         {

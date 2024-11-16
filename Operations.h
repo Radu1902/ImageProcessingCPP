@@ -2,6 +2,16 @@
 #include "Image.h"
 #include "math.h"
 
+
+unsigned char pixelClamp(long double value)
+{
+	if (value > 255)
+		return (unsigned char)255;
+	if (value < 0)
+		return (unsigned char)0;
+	return value;
+}
+
 // Basic operations
 
 void getHistogram(Image img, int channel, unsigned int histogram[256])
@@ -244,16 +254,98 @@ Image invert(Image input)
 	return inverted;
 }
 
-// pointwise operations
+// HSV operations
 
-unsigned char pixelClamp(long double value)
+Image offsetSaturation(Image input, int offset)
 {
-	if (value > 255)
-		return (unsigned char)255;
-	if (value < 0)
-		return (unsigned char)0;
-	return value;
+	if (input.isNull() || offset > 255 || offset < -255)
+	{
+		Image img;
+		return img;
+	}
+
+	Image hsv = convert2HSV(input);
+
+	for (size_t y = 0; y < hsv.getHeight(); y++)
+	{
+		for (size_t x = 0; x < hsv.getWidth(); x++)
+		{
+			unsigned char correspondingValue = pixelClamp((int)hsv[y][x].getValue(1) + offset);
+			hsv[y][x].setValue(correspondingValue, 1);
+		}
+	}
+
+	Image output = convert2RGB(hsv);
+	return output;
 }
+Image scaleSaturation(Image input, float multiplier)
+{
+	if (input.isNull() || multiplier < 0)
+	{
+		Image img;
+		return img;
+	}
+
+	Image hsv = convert2HSV(input);
+
+	for (size_t y = 0; y < hsv.getHeight(); y++)
+	{
+		for (size_t x = 0; x < hsv.getWidth(); x++)
+		{
+			unsigned char correspondingValue = pixelClamp((float)hsv[y][x].getValue(1) * multiplier);
+			hsv[y][x].setValue(correspondingValue, 1);
+		}
+	}
+
+	Image output = convert2RGB(hsv);
+	return output;
+}
+Image offsetValue(Image input, int offset)
+{
+	if (input.isNull() || offset > 255 || offset < -255)
+	{
+		Image img;
+		return img;
+	}
+
+	Image hsv = convert2HSV(input);
+
+	for (size_t y = 0; y < hsv.getHeight(); y++)
+	{
+		for (size_t x = 0; x < hsv.getWidth(); x++)
+		{
+			unsigned char correspondingValue = pixelClamp((int)hsv[y][x].getValue(2) + offset);
+			hsv[y][x].setValue(correspondingValue, 2);
+		}
+	}
+
+	Image output = convert2RGB(hsv);
+	return output;
+}
+Image scaleValue(Image input, float multiplier) 
+{
+	if (input.isNull() || multiplier < 0)
+	{
+		Image img;
+		return img;
+	}
+
+	Image hsv = convert2HSV(input);
+
+	for (size_t y = 0; y < hsv.getHeight(); y++)
+	{
+		for (size_t x = 0; x < hsv.getWidth(); x++)
+		{
+			unsigned char correspondingValue = pixelClamp((float)hsv[y][x].getValue(2) + multiplier);
+			hsv[y][x].setValue(correspondingValue, 2);
+		}
+	}
+
+	Image output = convert2RGB(hsv);
+	return output;
+}
+
+// pointwise operations
 
 Image applyLookUpTable(Image input, unsigned char lut[256])
 {
@@ -1677,7 +1769,7 @@ Image closing(Image input, int ksize)
 
 Image scaling(Image input, float coefficient)
 {
-	if (input.isNull())
+	if (input.isNull() || coefficient < 0)
 	{
 		Image img;
 		return img;
